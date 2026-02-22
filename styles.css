@@ -199,3 +199,70 @@ button.copy-btn:hover { opacity: 1; background: #e4efff; }
  .input-grid::after { display: none; }
  .compare-values { grid-template-columns: 1fr; gap: 2px; }
 }
+
+
+.ad-space {
+ display: grid;
+ gap: 8px;
+}
+
+.ad-placeholder {
+ min-height: 110px;
+ border: 1px dashed #b7c7de;
+ border-radius: 10px;
+ background: repeating-linear-gradient(
+   -45deg,
+   #f6f9ff,
+   #f6f9ff 10px,
+   #edf3ff 10px,
+   #edf3ff 20px
+ );
+ color: #4a6283;
+ display: grid;
+ place-items: center;
+ font-weight: 700;
+ letter-spacing: 0.02em;
+}
+
+.site-footer {
+ border-top: 1px solid #d7e1ef;
+ background: #f8fbff;
+ margin-top: 10px;
+}
+
+.footer-inner {
+ width: min(1200px, 94vw);
+ margin: 0 auto;
+ padding: 12px 0 16px;
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ gap: 10px;
+}
+
+.footer-inner small {
+ color: #59708e;
+}
+
+.footer-inner nav {
+ display: flex;
+ gap: 12px;
+}
+
+.footer-inner a {
+ color: #1f4f95;
+ text-decoration: none;
+ font-weight: 600;
+ font-size: 0.9rem;
+}
+
+.footer-inner a:hover {
+ text-decoration: underline;
+}
+
+@media (max-width: 960px) {
+ .footer-inner {
+  flex-direction: column;
+  align-items: flex-start;
+ }
+}
