@@ -1,4 +1,3 @@
-const OPTIMAL_SPIN_RPM = 2500;
 const GRAVITY = 9.80665;
 const AIR_DENSITY = 1.2;
 const BALL_MASS = 0.04593;
@@ -22,9 +21,11 @@ const ctx = canvas.getContext("2d");
 const headSpeedInput = document.getElementById("headSpeed");
 const smashFactorInput = document.getElementById("smashFactor");
 const launchAngleInput = document.getElementById("launchAngle");
+const spinRateInput = document.getElementById("spinRate");
 const headSpeedValue = document.getElementById("headSpeedValue");
 const smashFactorValue = document.getElementById("smashFactorValue");
 const launchAngleValue = document.getElementById("launchAngleValue");
+const spinRateValue = document.getElementById("spinRateValue");
 
 let previousResult = null;
 
@@ -72,6 +73,7 @@ function updateOutputs() {
   headSpeedValue.textContent = Number(headSpeedInput.value).toFixed(1);
   smashFactorValue.textContent = Number(smashFactorInput.value).toFixed(2);
   launchAngleValue.textContent = `${Number(launchAngleInput.value).toFixed(1)}°`;
+  spinRateValue.textContent = Number(spinRateInput.value).toFixed(0);
 }
 
 function interpolateAtGround(previous, current) {
@@ -84,7 +86,7 @@ function interpolateAtGround(previous, current) {
   };
 }
 
-function simulateFlight(ballSpeed, launchAngleDeg) {
+function simulateFlight(ballSpeed, launchAngleDeg, spinRate) {
   const launchRad = (launchAngleDeg * Math.PI) / 180;
   const dt = 0.01;
   let state = {
@@ -105,7 +107,7 @@ function simulateFlight(ballSpeed, launchAngleDeg) {
     const reClamped = clamp(re, 50000, 200000);
 
     const cd = cdFromRe(reClamped);
-    const spinFactor = spinFactorFrom(speed, OPTIMAL_SPIN_RPM);
+    const spinFactor = spinFactorFrom(speed, spinRate);
     const cl = clFromSpinFactor(spinFactor);
 
     const dragForce = 0.5 * AIR_DENSITY * cd * BALL_AREA * speed * speed;
@@ -140,9 +142,9 @@ function simulateFlight(ballSpeed, launchAngleDeg) {
   };
 }
 
-function calculateDistances(headSpeed, smashFactor, launchAngleDeg) {
+function calculateDistances(headSpeed, smashFactor, launchAngleDeg, spinRate) {
   const ballSpeed = headSpeed * smashFactor;
-  const flight = simulateFlight(ballSpeed, launchAngleDeg);
+  const flight = simulateFlight(ballSpeed, launchAngleDeg, spinRate);
   const gamma = Math.atan(Math.abs(flight.landingVy) / Math.max(flight.landingVx, EPSILON));
   const runMeters = Math.max(0, RUN_COEFFICIENT * flight.landingVx * flight.landingVx * Math.cos(gamma));
 
@@ -155,20 +157,21 @@ function calculateDistances(headSpeed, smashFactor, launchAngleDeg) {
   };
 }
 
-function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw) {
-  if (!headSpeedRaw || !smashFactorRaw || !launchAngleRaw) {
+function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRaw) {
+  if (!headSpeedRaw || !smashFactorRaw || !launchAngleRaw || !spinRateRaw) {
     return "すべての入力欄を入力してください。";
   }
 
   const headSpeed = Number(headSpeedRaw);
   const smashFactor = Number(smashFactorRaw);
   const launchAngle = Number(launchAngleRaw);
+  const spinRate = Number(spinRateRaw);
 
-  if (!Number.isFinite(headSpeed) || !Number.isFinite(smashFactor) || !Number.isFinite(launchAngle)) {
+  if (!Number.isFinite(headSpeed) || !Number.isFinite(smashFactor) || !Number.isFinite(launchAngle) || !Number.isFinite(spinRate)) {
     return "数値形式で入力してください。";
   }
 
-  if (headSpeed <= 0 || smashFactor <= 0 || launchAngle <= 0) {
+  if (headSpeed <= 0 || smashFactor <= 0 || launchAngle <= 0 || spinRate <= 0) {
     return "0より大きい値を入力してください。";
   }
 
@@ -182,6 +185,10 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw) {
 
   if (launchAngle < 10 || launchAngle > 18) {
     return "ローンチアングルは 10.0〜18.0 度の範囲で入力してください。";
+  }
+
+  if (spinRate < 1500 || spinRate > 3000) {
+    return "スピンレートは 1500〜3000 rpm の範囲で入力してください。";
   }
 
   return null;
@@ -255,12 +262,12 @@ function drawTrajectory(currentResult, previous) {
   ctx.fillStyle = "#1e2a38";
   ctx.font = "14px sans-serif";
   ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
-  ctx.fillText("最高到達点", currentMarks.peakPoint.x - 32, currentMarks.peakPoint.y - 10);
+  ctx.fillText("最大到達点", currentMarks.peakPoint.x - 32, currentMarks.peakPoint.y - 10);
   ctx.fillText("X軸: 距離", canvas.width - 110, groundY - 8);
   ctx.fillText("Y軸: 高さ", pad + 2, pad - 10);
 }
 
-[headSpeedInput, smashFactorInput, launchAngleInput].forEach((input) => {
+[headSpeedInput, smashFactorInput, launchAngleInput, spinRateInput].forEach((input) => {
   input.addEventListener("input", updateOutputs);
 });
 
@@ -270,8 +277,9 @@ form.addEventListener("submit", (event) => {
   const headSpeedRaw = headSpeedInput.value.trim();
   const smashFactorRaw = smashFactorInput.value.trim();
   const launchAngleRaw = launchAngleInput.value.trim();
+  const spinRateRaw = spinRateInput.value.trim();
 
-  const error = validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw);
+  const error = validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRaw);
 
   if (error) {
     showError(error);
@@ -285,7 +293,7 @@ form.addEventListener("submit", (event) => {
 
   clearError();
 
-  const result = calculateDistances(Number(headSpeedRaw), Number(smashFactorRaw), Number(launchAngleRaw));
+  const result = calculateDistances(Number(headSpeedRaw), Number(smashFactorRaw), Number(launchAngleRaw), Number(spinRateRaw));
 
   const carryYd = result.carryMeters / METERS_PER_YARD;
   const totalYd = result.totalMeters / METERS_PER_YARD;
@@ -300,4 +308,3 @@ form.addEventListener("submit", (event) => {
 });
 
 updateOutputs();
-console.info(`固定スピン設定: ${OPTIMAL_SPIN_RPM} rpm`);
