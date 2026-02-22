@@ -374,18 +374,23 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
   const landingX = plotLeft + Math.min(result.carryMeters, maxDisplayMeters) * scaleX;
   const totalX = plotLeft + Math.min(result.totalMeters, maxDisplayMeters) * scaleX;
 
-  ctx.fillStyle = color;
+  const markerColor = "#d11a2a";
+  ctx.fillStyle = markerColor;
   ctx.beginPath();
-  ctx.arc(landingX, plotBottom, 4, 0, Math.PI * 2);
+  ctx.arc(peakPoint.x, peakPoint.y, 4.5, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.beginPath();
-  ctx.arc(totalX, plotBottom, 4, 0, Math.PI * 2);
+  ctx.arc(landingX, plotBottom, 4.5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = color;
-  ctx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText("Apex", clamp(peakPoint.x - 18, plotLeft + 2, plotLeft + maxDisplayMeters * scaleX - 50), clamp(peakPoint.y - 10, 20, plotBottom - 20));
+  ctx.beginPath();
+  ctx.arc(totalX, plotBottom, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = markerColor;
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.fillText("最大到達点", clamp(peakPoint.x - 28, plotLeft + 2, plotLeft + maxDisplayMeters * scaleX - 72), clamp(peakPoint.y - 10, 20, plotBottom - 20));
 
   ctx.restore();
 }
