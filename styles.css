@@ -44,6 +44,42 @@ h1, h2 { margin: 0; }
  box-shadow: 0 6px 18px rgba(10, 28, 54, 0.06);
 }
 
+
+.page-tabs {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 8px;
+}
+
+.tab-link {
+ display: inline-block;
+ padding: 8px 12px;
+ border: 1px solid #c9d8ec;
+ border-radius: 999px;
+ background: #f2f7ff;
+ color: #285389;
+ text-decoration: none;
+ font-weight: 700;
+ font-size: 0.9rem;
+}
+
+.tab-link.active {
+ background: #1266f1;
+ border-color: #1266f1;
+ color: #ffffff;
+}
+
+.page-content-card p,
+.page-content-card ul {
+ margin: 0;
+}
+
+.page-content-card ul {
+ padding-left: 20px;
+ display: grid;
+ gap: 6px;
+}
+
 .result-card { display: grid; gap: 10px; }
 
 .trajectory-panel {
