@@ -15,7 +15,7 @@ const X_TICK_YARDS = 50;
 
 const GROUND = {
   // Normal coefficient of restitution (vertical bounce)
-  eN: 0.20,          // fairway-ish. 0.10 (soft) ... 0.30 (firm)
+  eN: 0.50,          // fairway-ish. 0.10 (soft) ... 0.30 (firm)
   // Kinetic friction coefficient during impact + sliding
   mu: 0.35,          // 0.25..0.55
   // Rolling resistance coefficient (pure rolling decel = cRR * g)
@@ -23,7 +23,7 @@ const GROUND = {
   // Stop bouncing when post-bounce vertical speed is below this
   vyStop: 0.6,       // m/s
   // Safety limit
-  maxBounces: 6,
+  maxBounces: 3,
 };
 
 // --- Spin decay (4%/s) ---
