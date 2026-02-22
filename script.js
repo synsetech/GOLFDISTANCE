@@ -490,6 +490,26 @@ function drawTrajectory(left, right) {
   drawSingleTrajectory(right, "rgba(255, 118, 30, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
 }
 
+
+function copySideInputs(fromPrefix, toPrefix) {
+  if (!hasDom) return;
+
+  const sideSuffix = { left: "Left", right: "Right" };
+  const from = sideSuffix[fromPrefix];
+  const to = sideSuffix[toPrefix];
+  if (!from || !to) return;
+
+  const fieldNames = ["headSpeed", "smashFactor", "launchAngle", "spinRate", "windSpeed"];
+  fieldNames.forEach((name) => {
+    const fromInput = document.getElementById(`${name}${from}`);
+    const toInput = document.getElementById(`${name}${to}`);
+    if (!fromInput || !toInput) return;
+
+    toInput.value = fromInput.value;
+    toInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 function createSide(prefix, sideResultSetter) {
   if (!hasDom) return;
 
@@ -556,7 +576,7 @@ function createSide(prefix, sideResultSetter) {
 
     if (error) {
       showError(error);
-      const sideLabel = prefix === "left" ? "左" : "右";
+      const sideLabel = prefix === "left" ? "A" : "B";
       refs.maxHeightResult.textContent = `${sideLabel}: -`;
       refs.carryResult.textContent = `${sideLabel}: -`;
       refs.totalResult.textContent = `${sideLabel}: -`;
@@ -575,7 +595,7 @@ function createSide(prefix, sideResultSetter) {
       toPhysicsWind(Number(refs.windSpeedInput.value))
     );
 
-    const sideLabel = prefix === "left" ? "左" : "右";
+    const sideLabel = prefix === "left" ? "A" : "B";
     refs.maxHeightResult.textContent = `${sideLabel}: ${result.maxHeightMeters.toFixed(1)} m`;
     refs.carryResult.textContent = `${sideLabel}: ${(result.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
     refs.totalResult.textContent = `${sideLabel}: ${(result.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
@@ -588,6 +608,16 @@ function createSide(prefix, sideResultSetter) {
 }
 
 if (hasDom) {
+  const copyAToBButton = document.getElementById("copy-a-to-b");
+  const copyBToAButton = document.getElementById("copy-b-to-a");
+
+  if (copyAToBButton) {
+    copyAToBButton.addEventListener("click", () => copySideInputs("left", "right"));
+  }
+  if (copyBToAButton) {
+    copyBToAButton.addEventListener("click", () => copySideInputs("right", "left"));
+  }
+
   createSide("left", (result) => {
     leftResult = result;
   });

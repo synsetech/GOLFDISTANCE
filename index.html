@@ -13,9 +13,12 @@
         ※ 本ツールは2次元モデルの簡易推定です。バックスピン・抗力係数・揚力係数は簡易化して扱い、風や地面状況などは反映していません。
       </p>
 
-      <section class="input-grid" aria-label="左右比較入力">
+      <section class="input-grid" aria-label="A/B比較入力">
         <article class="card">
-          <h2>入力</h2>
+          <div class="card-head">
+            <h2>入力 A</h2>
+            <button type="button" class="copy-btn" id="copy-a-to-b" aria-label="Aの入力をBへコピー">A→B</button>
+          </div>
           <form id="distance-form-left" class="distance-form" novalidate>
             <div class="field">
               <label for="headSpeedLeft">ヘッドスピード（m/s）</label>
@@ -74,7 +77,10 @@
         </article>
 
         <article class="card">
-          <h2>入力</h2>
+          <div class="card-head">
+            <h2>入力 B</h2>
+            <button type="button" class="copy-btn" id="copy-b-to-a" aria-label="Bの入力をAへコピー">B→A</button>
+          </div>
           <form id="distance-form-right" class="distance-form" novalidate>
             <div class="field">
               <label for="headSpeedRight">ヘッドスピード（m/s）</label>
@@ -138,15 +144,15 @@
         <ul class="result-list compare-list">
           <li>
             <span>最大到達点</span>
-            <div class="compare-values"><strong id="maxHeightResultLeft">左: -</strong><strong id="maxHeightResultRight">右: -</strong></div>
+            <div class="compare-values"><strong id="maxHeightResultLeft">A: -</strong><strong id="maxHeightResultRight">B: -</strong></div>
           </li>
           <li>
             <span>キャリー距離</span>
-            <div class="compare-values"><strong id="carryResultLeft">左: -</strong><strong id="carryResultRight">右: -</strong></div>
+            <div class="compare-values"><strong id="carryResultLeft">A: -</strong><strong id="carryResultRight">B: -</strong></div>
           </li>
           <li>
             <span>トータル距離</span>
-            <div class="compare-values"><strong id="totalResultLeft">左: -</strong><strong id="totalResultRight">右: -</strong></div>
+            <div class="compare-values"><strong id="totalResultLeft">A: -</strong><strong id="totalResultRight">B: -</strong></div>
           </li>
         </ul>
 
