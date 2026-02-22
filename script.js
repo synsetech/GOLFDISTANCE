@@ -69,6 +69,14 @@ function spinFactorFrom(speed, spinRpm) {
   return (omega * BALL_RADIUS) / Math.max(speed, EPSILON);
 }
 
+function effectiveSpinRate(spinRate) {
+  // 3000rpmまでは実入力を採用し、3000〜5000rpmは効果を緩やかに補間
+  if (spinRate <= 3000) return spinRate;
+  const t = (spinRate - 3000) / 2000;
+  return lerp(3000, 3800, t);
+}
+
+
 function updateOutputs() {
   const headSpeed = Number(headSpeedInput.value);
   const smashFactor = Number(smashFactorInput.value);
@@ -111,7 +119,7 @@ function simulateFlight(ballSpeed, launchAngleDeg, spinRate) {
     const reClamped = clamp(re, 50000, 200000);
 
     const cd = cdFromRe(reClamped);
-    const spinFactor = spinFactorFrom(speed, spinRate);
+    const spinFactor = spinFactorFrom(speed, effectiveSpinRate(spinRate));
     const cl = clFromSpinFactor(spinFactor);
 
     const dragForce = 0.5 * AIR_DENSITY * cd * BALL_AREA * speed * speed;
@@ -191,8 +199,8 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
     return "ローンチアングルは 10.0〜18.0 度の範囲で入力してください。";
   }
 
-  if (spinRate < 1500 || spinRate > 3000) {
-    return "スピンレートは 1500〜3000 rpm の範囲で入力してください。";
+  if (spinRate < 1500 || spinRate > 5000) {
+    return "スピンレートは 1500〜5000 rpm の範囲で入力してください。";
   }
 
   return null;
@@ -250,7 +258,22 @@ function drawTrajectory(currentResult, previous) {
   const groundY = canvas.height - pad;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = "#4f6580";
+  const groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+  groundGradient.addColorStop(0, "rgba(110, 187, 110, 0.55)");
+  groundGradient.addColorStop(1, "rgba(56, 122, 56, 0.85)");
+  ctx.fillStyle = groundGradient;
+  ctx.fillRect(pad, groundY, canvas.width - pad * 2, canvas.height - groundY);
+
+  ctx.strokeStyle = "#93c08a";
+  ctx.lineWidth = 1;
+  for (let x = pad; x <= canvas.width - pad; x += 40) {
+    ctx.beginPath();
+    ctx.moveTo(x, groundY + 2);
+    ctx.lineTo(x + 16, canvas.height - 8);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#d0e2ff";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(pad, groundY);
@@ -266,9 +289,7 @@ function drawTrajectory(currentResult, previous) {
   ctx.fillStyle = "#f3f7ff";
   ctx.font = "14px sans-serif";
   ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
-  ctx.fillText("最大到達点", currentMarks.peakPoint.x - 32, currentMarks.peakPoint.y - 10);
-  ctx.fillText("X軸: 距離", canvas.width - 110, groundY - 8);
-  ctx.fillText("Y軸: 高さ", pad + 2, pad - 10);
+  ctx.fillText("最大到達点", currentMarks.peakPoint.x - 36, currentMarks.peakPoint.y - 12);
 }
 
 [headSpeedInput, smashFactorInput, launchAngleInput, spinRateInput].forEach((input) => {
