@@ -319,7 +319,7 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   if (smashFactor < 1.3 || smashFactor > 1.56) return "ミート率は 1.30〜1.56 の範囲で入力してください。";
   if (launchAngle < 8 || launchAngle > 25) return "打ち出し角は 8.0〜25.0 度の範囲で入力してください。";
   if (spinRate < 1500 || spinRate > 5000) return "スピンレートは 1500〜5000 rpm の範囲で入力してください。";
-  if (windSpeed < -10 || windSpeed > 10) return "風向風速は -10.0〜10.0 m/s の範囲で入力してください。";
+  if (windSpeed < -7 || windSpeed > 7) return "風向風速は -7.0〜+7.0 m/s の範囲で入力してください。";
 
   return null;
 }
