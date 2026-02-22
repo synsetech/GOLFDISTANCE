@@ -11,19 +11,21 @@ const AIR_KINEMATIC_VISCOSITY = 1.5e-5;
 
 const METERS_PER_YARD = 0.9144;
 const EPSILON = 1e-6;
-const X_TICK_YARDS = 50;
+const DISPLAY_PADDING_YARDS = 20;
 
 const GROUND = {
-  // Normal coefficient of restitution (vertical bounce)
-  eN: 0.50,          // fairway-ish. 0.10 (soft) ... 0.30 (firm)
+  // First impact: 地面が潰れる前提で低め
+  eNFirst: 0.22,
+  // 2回目以降のバウンド反発
+  eNAfter: 0.36,
   // Kinetic friction coefficient during impact + sliding
-  mu: 0.35,          // 0.25..0.55
+  mu: 0.35,          // (将来拡張用: 今回のバウンド減衰では未使用)
   // Rolling resistance coefficient (pure rolling decel = cRR * g)
   cRR: 0.030,        // fairway 0.020..0.040, rough 0.050..0.080
   // Stop bouncing when post-bounce vertical speed is below this
-  vyStop: 0.6,       // m/s
+  vyStop: 0.55,      // m/s
   // Safety limit
-  maxBounces: 3,
+  maxBounces: 4,
 };
 
 // --- Spin decay (4%/s) ---
@@ -49,9 +51,8 @@ function toPhysicsWind(rawWindValue) {
 
 function computeMaxDisplayMeters(currentTotalMeters, previousTotalMeters) {
   const maxTotalMeters = Math.max(currentTotalMeters || 0, previousTotalMeters || 0);
-  const paddedYards = maxTotalMeters / METERS_PER_YARD + 50;
-  const roundedYards = Math.ceil(paddedYards / X_TICK_YARDS) * X_TICK_YARDS;
-  return Math.max(roundedYards * METERS_PER_YARD, 150 * METERS_PER_YARD);
+  const paddedMeters = maxTotalMeters + DISPLAY_PADDING_YARDS * METERS_PER_YARD;
+  return Math.max(paddedMeters, 150 * METERS_PER_YARD);
 }
 
 // =====================
@@ -186,18 +187,12 @@ function computeRunMetersFromLanding(landingVx, landingVy, _spinLandRpmIgnored) 
   // extra safety clamps (prevents extreme carry/run when something upstream goes odd)
   v0 = clamp(v0, 0, landingVx);
 
-  // 3) rolling resistance model params (turf)
-  // a0 ~ constant loss (m/s^2), k ~ velocity-proportional loss (1/s)
-  // Fairway-ish defaults (tune):
-  const a0 = 1.2;     // 0.6..1.6  (bigger -> shorter run)
-  const k  = 0.3;    // 0.10..0.35 (bigger -> shorter run)
+  // 3) rolling run model: Vx^2 dependent
+  // run = k * v0^2 （入射角で減衰した v0 を使用）
+  const K_RUN_VX2 = 0.085;
+  const run = K_RUN_VX2 * v0 * v0;
 
-  // 4) distance until stop for dv/dt = -(a0 + k v)
-  // s = v0/k - (a0/k^2) * ln(1 + k v0/a0)
-  const kvOverA0 = (k * v0) / Math.max(a0, EPSILON);
-  const run = (v0 / Math.max(k, EPSILON)) - (a0 / Math.max(k * k, EPSILON)) * Math.log(1 + kvOverA0);
-
-  // 5) final clamp (optional, but makes UI bulletproof)
+  // 4) final clamp (optional, but makes UI bulletproof)
   const RUN_MAX_METERS = 120; // ~131 yd cap (set as you like)
   return clamp(run, 0, RUN_MAX_METERS);
 }
@@ -210,29 +205,50 @@ function computeRunWithBounceFromLanding(landingVx, landingVy, spinLandRpm) {
   }
 
   const g = GRAVITY;
-  const eN = clamp(GROUND.eN, 0, 0.9);
-  const bounceHorizLoss = 0.94;
-  const maxBounceHeightMeters = 12;
+  const eNFirst = clamp(GROUND.eNFirst, 0, 0.9);
+  const eNAfter = clamp(GROUND.eNAfter, 0, 0.9);
+  const maxBounceHeightMeters = 8;
   const minBounceVy = GROUND.vyStop;
 
-  let vx = Math.max(landingVx, 0);
-  let vyDown = Math.max(0, -landingVy);
+  const vyDownAtLanding = Math.max(0, -landingVy);
+  const gamma = Math.atan2(vyDownAtLanding, Math.max(landingVx, EPSILON));
+  const K_LANDING_ANGLE = 1.1;
+  const tanG = Math.tan(gamma);
+  const landingAngleLoss = 1 / (1 + K_LANDING_ANGLE * tanG * tanG);
+
+  // 1回目着弾のみ: Backspin(+)で減衰強め / Topspin(-)で減衰弱め
+  const spinSign = Math.sign(spinLandRpm || 0);
+  const spinAbs = Math.abs(spinLandRpm || 0);
+  const spinNorm = clamp(spinAbs / 3200, 0, 2.0);
+  const spinLoss = clamp(1 - 0.22 * spinNorm * spinSign, 0.72, 1.00);
+
+  let vx = Math.max(landingVx * landingAngleLoss * spinLoss, 0);
+  let vyDown = vyDownAtLanding;
   let x = 0;
 
   for (let i = 0; i < GROUND.maxBounces; i += 1) {
+    const eN = i === 0 ? eNFirst : eNAfter;
     const vyUp = vyDown * eN;
     if (vyUp < minBounceVy || vx <= 0) break;
 
     const tBounce = (2 * vyUp) / g;
+    const sampleCount = clamp(Math.ceil(tBounce / 0.015), 4, 24);
+
+    for (let s = 1; s <= sampleCount; s += 1) {
+      const t = (tBounce * s) / sampleCount;
+      const px = x + vx * t;
+      const py = Math.max(0, vyUp * t - 0.5 * g * t * t);
+      runPath.push({ x: px, y: py });
+    }
+
     const bounceDist = vx * tBounce;
     x += Math.max(0, bounceDist);
 
-    const peakHeight = clamp((vyUp * vyUp) / (2 * g), 0, maxBounceHeightMeters);
-    runPath.push({ x: x - bounceDist / 2, y: peakHeight });
-    runPath.push({ x, y: 0 });
-
-    vx *= bounceHorizLoss;
+    // 水平方向は摩擦式で毎回減衰させず、着弾時の入射角で初期減衰させる
     vyDown = vyUp;
+
+    const peakHeight = clamp((vyUp * vyUp) / (2 * g), 0, maxBounceHeightMeters);
+    if (peakHeight <= 0.01) break;
   }
 
   const rollMeters = computeRunMetersFromLanding(vx, 0, spinLandRpm);
@@ -400,8 +416,8 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
     return "ミート率は 1.30〜1.56 の範囲で入力してください。";
   }
 
-  if (launchAngle < 10 || launchAngle > 18) {
-    return "打ち出し角は 10.0〜18.0 度の範囲で入力してください。";
+  if (launchAngle < 8 || launchAngle > 25) {
+    return "打ち出し角は 8.0〜25.0 度の範囲で入力してください。";
   }
 
   if (spinRate < 1500 || spinRate > 5000) {
@@ -415,18 +431,26 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   return null;
 }
 
-function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scaleY, pad, groundY, maxDisplayMeters, peakColor = "#ff4d4f") {
-  if (!ctx || !canvas) return { landingX: 0, peakPoint: { x: 0, y: 0 }, overflow: false };
-  const maxXPixel = canvas.width - pad;
+function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scaleY, plotLeft, plotTop, plotBottom, maxDisplayMeters, opts = {}) {
+  if (!ctx || !canvas) return { landingX: plotLeft, peakPoint: { x: plotLeft, y: plotBottom }, overflow: false };
+
+  const {
+    showLandingMarker = true,
+    showPeakMarker = true,
+    peakMarkerColor = "#ff3b30",
+  } = opts;
 
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.setLineDash([]);
   ctx.beginPath();
 
   let started = false;
-  let peakPoint = { x: pad, y: groundY };
+  let peakPoint = { x: plotLeft, y: plotBottom };
   let clippedAtEdge = false;
 
   for (const point of trajectory) {
@@ -435,8 +459,8 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
       break;
     }
 
-    const px = pad + point.x * scaleX;
-    const py = groundY - point.y * scaleY;
+    const px = plotLeft + point.x * scaleX;
+    const py = plotBottom - point.y * scaleY;
 
     if (!started) {
       ctx.moveTo(px, py);
@@ -445,20 +469,33 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
       ctx.lineTo(px, py);
     }
 
-    if (py < peakPoint.y) {
-      peakPoint = { x: px, y: py };
-    }
+    if (py < peakPoint.y) peakPoint = { x: px, y: py };
   }
 
   if (clippedAtEdge && trajectory.length >= 2) {
-    const prev = trajectory.findLast((p) => p.x <= maxDisplayMeters);
-    const next = trajectory.find((p) => p.x > maxDisplayMeters);
+    let prev = null;
+    let next = null;
+
+    for (let i = trajectory.length - 1; i >= 0; i -= 1) {
+      if (trajectory[i].x <= maxDisplayMeters) {
+        prev = trajectory[i];
+        break;
+      }
+    }
+    for (let i = 0; i < trajectory.length; i += 1) {
+      if (trajectory[i].x > maxDisplayMeters) {
+        next = trajectory[i];
+        break;
+      }
+    }
+
     if (prev && next) {
       const t = (maxDisplayMeters - prev.x) / Math.max(next.x - prev.x, EPSILON);
       const yAtEdge = prev.y + (next.y - prev.y) * t;
-      const pyEdge = groundY - yAtEdge * scaleY;
-      ctx.lineTo(maxXPixel, pyEdge);
-      if (pyEdge < peakPoint.y) peakPoint = { x: maxXPixel, y: pyEdge };
+      const pxEdge = plotLeft + maxDisplayMeters * scaleX;
+      const pyEdge = plotBottom - yAtEdge * scaleY;
+      ctx.lineTo(pxEdge, pyEdge);
+      if (pyEdge < peakPoint.y) peakPoint = { x: pxEdge, y: pyEdge };
     }
   }
 
@@ -466,25 +503,27 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
 
   const carryMeters = trajectory[trajectory.length - 1]?.x ?? 0;
   const overflow = carryMeters > maxDisplayMeters;
-  const landingX = overflow ? maxXPixel : pad + carryMeters * scaleX;
+  const landingX = overflow ? (plotLeft + maxDisplayMeters * scaleX) : (plotLeft + carryMeters * scaleX);
 
-  ctx.fillStyle = color;
-  if (!overflow) {
+  if (showLandingMarker && !overflow) {
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(landingX, groundY, 4, 0, Math.PI * 2);
+    ctx.arc(landingX, plotBottom, 4, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.fillStyle = peakColor;
-  ctx.beginPath();
-  ctx.arc(peakPoint.x, peakPoint.y, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  if (showPeakMarker) {
+    ctx.fillStyle = peakMarkerColor;
+    ctx.beginPath();
+    ctx.arc(peakPoint.x, peakPoint.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
+  ctx.restore();
   return { landingX, peakPoint, overflow };
 }
 
-function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayMeters, alpha = 1) {
+function drawRunSegment(result, color, scaleX, plotLeft, plotBottom, maxDisplayMeters, alpha = 1) {
   if (!ctx || !canvas) return;
 
   const runTrajectory = result.runTrajectory || [
@@ -497,8 +536,8 @@ function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayM
   const visiblePoints = runTrajectory
     .filter((point) => point.x <= maxDisplayMeters)
     .map((point) => ({
-      x: pad + point.x * scaleX,
-      y: groundY - point.y * scaleY,
+      x: plotLeft + point.x * scaleX,
+      y: plotBottom - point.y * scaleX,
     }));
 
   if (visiblePoints.length < 2) return;
@@ -507,7 +546,9 @@ function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayM
   ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  ctx.setLineDash([7, 5]);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(visiblePoints[0].x, visiblePoints[0].y - 1);
   for (let i = 1; i < visiblePoints.length; i += 1) {
@@ -519,7 +560,7 @@ function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayM
   if (result.totalMeters <= maxDisplayMeters) {
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(last.x, groundY, 4, 0, Math.PI * 2);
+    ctx.arc(last.x, plotBottom, 4, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -527,62 +568,166 @@ function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayM
 
 function drawTrajectory(currentResult, previous) {
   if (!ctx || !canvas) return;
-  const pad = 36;
-  const groundY = canvas.height - pad;
+
+  const margin = {
+    left: 18,
+    right: 18,
+    top: 12,
+    bottom: 36,
+  };
+
+  const plotLeft = margin.left;
+  const plotRight = canvas.width - margin.right;
+  const plotTop = margin.top;
+  const plotBottom = canvas.height - margin.bottom;
+
+  const width = plotRight - plotLeft;
+  const height = plotBottom - plotTop;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
-  groundGradient.addColorStop(0, "rgba(110, 187, 110, 0.55)");
-  groundGradient.addColorStop(1, "rgba(56, 122, 56, 0.85)");
-  ctx.fillStyle = groundGradient;
-  ctx.fillRect(pad, groundY, canvas.width - pad * 2, canvas.height - groundY);
-
-  ctx.strokeStyle = "#d0e2ff";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pad, groundY);
-  ctx.lineTo(canvas.width - pad, groundY);
-  ctx.stroke();
-
-  const width = canvas.width - pad * 2;
-  const height = canvas.height - pad * 2;
+  ctx.save();
+  ctx.fillStyle = "#f5f7fb";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 
   const baseDisplayMeters = computeMaxDisplayMeters(currentResult.totalMeters, previous?.totalMeters || 0);
-  const maxHeightMeters = Math.max(Math.max(currentResult.maxHeightMeters, previous?.maxHeightMeters || 0) * 1.35, 1);
-  const minDisplayForEqualScale = (width * maxHeightMeters) / height;
-  const maxDisplayMeters = Math.max(baseDisplayMeters, minDisplayForEqualScale);
+  const maxHeightMeters = Math.max(
+    Math.max(currentResult.maxHeightMeters, previous?.maxHeightMeters || 0) * 1.18,
+    1
+  );
 
-  const unifiedScale = width / maxDisplayMeters;
+  // 縦横ヤード軸の等倍を厳守
+  const unifiedScale = Math.min(
+    width / Math.max(baseDisplayMeters, EPSILON),
+    height / Math.max(maxHeightMeters, EPSILON)
+  );
+
+  const maxDisplayMeters = width / Math.max(unifiedScale, EPSILON);
+  const maxDisplayYMeters = height / Math.max(unifiedScale, EPSILON);
   const scaleX = unifiedScale;
   const scaleY = unifiedScale;
 
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.save();
+  ctx.strokeStyle = "rgba(50, 60, 80, 0.26)";
   ctx.lineWidth = 1;
-  const maxDisplayYards = Math.floor(maxDisplayMeters / METERS_PER_YARD);
-  for (let yard = X_TICK_YARDS; yard <= maxDisplayYards; yard += X_TICK_YARDS) {
-    const x = pad + yard * METERS_PER_YARD * scaleX;
+  ctx.strokeRect(plotLeft, plotTop, width, height);
+  ctx.restore();
+
+  const majorYd = 50;
+  const minorYd = 10;
+  const maxDisplayYardsX = Math.floor(maxDisplayMeters / METERS_PER_YARD);
+  const maxDisplayYardsY = Math.floor(maxDisplayYMeters / METERS_PER_YARD);
+
+  // minor grid (縦横)
+  ctx.save();
+  ctx.strokeStyle = "rgba(40, 45, 55, 0.10)";
+  ctx.lineWidth = 1;
+  for (let yd = minorYd; yd <= maxDisplayYardsX; yd += minorYd) {
+    if (yd % majorYd === 0) continue;
+    const x = plotLeft + yd * METERS_PER_YARD * scaleX;
     ctx.beginPath();
-    ctx.moveTo(x, groundY);
-    ctx.lineTo(x, groundY - 8);
+    ctx.moveTo(x, plotBottom);
+    ctx.lineTo(x, plotTop);
     ctx.stroke();
-    ctx.fillStyle = "rgba(230,240,255,0.8)";
-    ctx.font = "11px sans-serif";
-    ctx.fillText(`${yard}`, x - 10, groundY + 16);
   }
+  for (let yd = minorYd; yd <= maxDisplayYardsY; yd += minorYd) {
+    if (yd % majorYd === 0) continue;
+    const y = plotBottom - yd * METERS_PER_YARD * scaleY;
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, y);
+    ctx.lineTo(plotRight, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // major grid + labels (black text)
+  ctx.save();
+  ctx.strokeStyle = "rgba(20, 25, 35, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#12161f";
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
+
+  for (let yd = majorYd; yd <= maxDisplayYardsX; yd += majorYd) {
+    const x = plotLeft + yd * METERS_PER_YARD * scaleX;
+    ctx.beginPath();
+    ctx.moveTo(x, plotBottom);
+    ctx.lineTo(x, plotTop);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, plotBottom);
+    ctx.lineTo(x, plotBottom - 9);
+    ctx.stroke();
+
+    const label = `${yd}`;
+    const w = ctx.measureText(label).width;
+    ctx.fillText(label, x - w / 2, plotBottom + 18);
+  }
+
+  for (let yd = majorYd; yd <= maxDisplayYardsY; yd += majorYd) {
+    const y = plotBottom - yd * METERS_PER_YARD * scaleY;
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, y);
+    ctx.lineTo(plotRight, y);
+    ctx.stroke();
+
+    const label = `${yd}`;
+    ctx.fillText(label, plotLeft - 14, y + 4);
+  }
+
+  ctx.fillText("X [yd]", plotRight - 42, canvas.height - 10);
+  ctx.fillText("Y [yd]", plotLeft + 4, plotTop + 14);
+  ctx.restore();
+
+  // baseline
+  ctx.save();
+  ctx.strokeStyle = "rgba(20, 25, 35, 0.50)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(plotLeft, plotBottom);
+  ctx.lineTo(plotRight, plotBottom);
+  ctx.stroke();
+  ctx.restore();
 
   if (previous) {
-    drawSingleTrajectory(previous.trajectory, "#8ea0b4", 2, 0.35, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#c66");
-    drawRunSegment(previous, "#8ea0b4", scaleX, scaleY, pad, groundY, maxDisplayMeters, 0.45);
+    drawSingleTrajectory(
+      previous.trajectory,
+      "rgba(90, 105, 125, 0.72)",
+      2,
+      0.55,
+      scaleX,
+      scaleY,
+      plotLeft,
+      plotTop,
+      plotBottom,
+      maxDisplayMeters,
+      { showLandingMarker: true, showPeakMarker: true, peakMarkerColor: "rgba(190, 80, 80, 0.85)" }
+    );
+    drawRunSegment(previous, "rgba(90, 105, 125, 0.72)", scaleX, plotLeft, plotBottom, maxDisplayMeters, 0.55);
   }
 
-  const currentMarks = drawSingleTrajectory(currentResult.trajectory, "#41a5ff", 3, 1, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#ff3b30");
-  drawRunSegment(currentResult, "#111", scaleX, scaleY, pad, groundY, maxDisplayMeters, 1);
+  const currentMarks = drawSingleTrajectory(
+    currentResult.trajectory,
+    "rgba(20, 130, 245, 1)",
+    3,
+    1,
+    scaleX,
+    scaleY,
+    plotLeft,
+    plotTop,
+    plotBottom,
+    maxDisplayMeters,
+    { showLandingMarker: true, showPeakMarker: true, peakMarkerColor: "rgba(220, 40, 40, 1)" }
+  );
 
-  ctx.fillStyle = "#f3f7ff";
-  ctx.font = "14px sans-serif";
-  ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
-  ctx.fillText("最大到達点", currentMarks.peakPoint.x - 36, currentMarks.peakPoint.y - 12);
-  ctx.fillText(`${Math.round(maxDisplayMeters / METERS_PER_YARD)} yd`, canvas.width - pad - 42, groundY - 12);
+  drawRunSegment(currentResult, "rgba(20,20,20,0.92)", scaleX, plotLeft, plotBottom, maxDisplayMeters, 1);
+
+  ctx.save();
+  ctx.fillStyle = "#111";
+  ctx.font = "13px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.fillText("Landing", clamp(currentMarks.landingX - 18, plotLeft + 2, plotRight - 74), clamp(plotBottom - 12, plotTop + 16, plotBottom - 6));
+  ctx.fillText("Apex", clamp(currentMarks.peakPoint.x - 20, plotLeft + 2, plotRight - 60), clamp(currentMarks.peakPoint.y - 10, plotTop + 16, plotBottom - 20));
+  ctx.restore();
 }
 
 if (hasDom && form && headSpeedInput && smashFactorInput && launchAngleInput && spinRateInput && windSpeedInput) {
