@@ -25,6 +25,11 @@
             <small>範囲: 25.0〜60.0 m/s</small>
           </div>
 
+          <div class="inline-metric" aria-live="polite">
+            <span>ボール初速（ヘッドスピード × ミート率）</span>
+            <strong id="ballSpeedPreview">-</strong>
+          </div>
+
           <div class="field">
             <label for="smashFactor">ミート率（小数）</label>
             <div class="range-row">
@@ -60,14 +65,15 @@
 
       <section class="card result-card">
         <h2>軌道計算</h2>
-        <canvas id="trajectoryCanvas" width="800" height="420" aria-label="側面からの2D弾道図"></canvas>
         <ul class="result-list">
-          <li><span>側面からの2D弾道図</span><span>濃線: 今回 / 薄線: 前回</span></li>
-          <li><span>ボール初速</span><strong id="ballSpeedResult">-</strong></li>
           <li><span>最大到達点</span><strong id="maxHeightResult">-</strong></li>
           <li><span>キャリー距離</span><strong id="carryResult">-</strong></li>
           <li><span>トータル距離</span><strong id="totalResult">-</strong></li>
         </ul>
+
+        <div class="trajectory-panel">
+          <canvas id="trajectoryCanvas" width="800" height="420" aria-label="側面からの2D弾道図"></canvas>
+        </div>
       </section>
     </main>
 

@@ -13,8 +13,8 @@ const form = document.getElementById("distance-form");
 const errorMessage = document.getElementById("error-message");
 const carryResult = document.getElementById("carryResult");
 const totalResult = document.getElementById("totalResult");
-const ballSpeedResult = document.getElementById("ballSpeedResult");
 const maxHeightResult = document.getElementById("maxHeightResult");
+const ballSpeedPreview = document.getElementById("ballSpeedPreview");
 const canvas = document.getElementById("trajectoryCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -70,10 +70,14 @@ function spinFactorFrom(speed, spinRpm) {
 }
 
 function updateOutputs() {
-  headSpeedValue.textContent = Number(headSpeedInput.value).toFixed(1);
-  smashFactorValue.textContent = Number(smashFactorInput.value).toFixed(2);
+  const headSpeed = Number(headSpeedInput.value);
+  const smashFactor = Number(smashFactorInput.value);
+
+  headSpeedValue.textContent = headSpeed.toFixed(1);
+  smashFactorValue.textContent = smashFactor.toFixed(2);
   launchAngleValue.textContent = `${Number(launchAngleInput.value).toFixed(1)}°`;
   spinRateValue.textContent = Number(spinRateInput.value).toFixed(0);
+  ballSpeedPreview.textContent = `${(headSpeed * smashFactor).toFixed(1)} m/s`;
 }
 
 function interpolateAtGround(previous, current) {
@@ -254,12 +258,12 @@ function drawTrajectory(currentResult, previous) {
   ctx.stroke();
 
   if (previous) {
-    drawSingleTrajectory(previous.trajectory, previous.maxHeightMeters, "#7f8c9b", 2, 0.35);
+    drawSingleTrajectory(previous.trajectory, previous.maxHeightMeters, "#8ea0b4", 2, 0.35);
   }
 
-  const currentMarks = drawSingleTrajectory(currentResult.trajectory, currentResult.maxHeightMeters, "#1266f1", 3, 1);
+  const currentMarks = drawSingleTrajectory(currentResult.trajectory, currentResult.maxHeightMeters, "#41a5ff", 3, 1);
 
-  ctx.fillStyle = "#1e2a38";
+  ctx.fillStyle = "#f3f7ff";
   ctx.font = "14px sans-serif";
   ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
   ctx.fillText("最大到達点", currentMarks.peakPoint.x - 32, currentMarks.peakPoint.y - 10);
@@ -283,7 +287,6 @@ form.addEventListener("submit", (event) => {
 
   if (error) {
     showError(error);
-    ballSpeedResult.textContent = "-";
     maxHeightResult.textContent = "-";
     carryResult.textContent = "-";
     totalResult.textContent = "-";
@@ -298,7 +301,6 @@ form.addEventListener("submit", (event) => {
   const carryYd = result.carryMeters / METERS_PER_YARD;
   const totalYd = result.totalMeters / METERS_PER_YARD;
 
-  ballSpeedResult.textContent = `${result.ballSpeed.toFixed(1)} m/s`;
   maxHeightResult.textContent = `${result.maxHeightMeters.toFixed(1)} m`;
   carryResult.textContent = `${result.carryMeters.toFixed(1)} m / ${carryYd.toFixed(1)} yd`;
   totalResult.textContent = `${result.totalMeters.toFixed(1)} m / ${totalYd.toFixed(1)} yd`;
