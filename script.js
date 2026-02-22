@@ -406,11 +406,9 @@ function drawTrajectory(left, right) {
   const height = plotBottom - plotTop;
 
   const maxDisplayMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
-  const maxHeightMeters = Math.max((left?.maxHeightMeters || 0), (right?.maxHeightMeters || 0), 1) * 1.18;
-  const unifiedScale = Math.min(width / Math.max(maxDisplayMeters, EPSILON), height / Math.max(maxHeightMeters, EPSILON));
-  const scaleX = unifiedScale;
-  const scaleY = unifiedScale;
-  const maxDisplayYMeters = height / Math.max(unifiedScale, EPSILON);
+  const maxDisplayYMeters = 100 * METERS_PER_YARD;
+  const scaleX = width / Math.max(maxDisplayMeters, EPSILON);
+  const scaleY = height / Math.max(maxDisplayYMeters, EPSILON);
 
   ctx.save();
   ctx.fillStyle = "#f5f7fb";
