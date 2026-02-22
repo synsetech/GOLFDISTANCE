@@ -14,7 +14,6 @@ const RUN_COEFFICIENT = 0.01;
 
 const METERS_PER_YARD = 0.9144;
 const EPSILON = 1e-6;
-const MAX_DISPLAY_YARDS = 380;
 const X_TICK_YARDS = 50;
 
 // --- Spin decay (4%/s) ---
@@ -22,50 +21,64 @@ const SPIN_DECAY_RATE = 0.04; // 1/s
 
 // --- Cd(Re,S) extension (KK-based Cd(Re) + linear S term) ---
 // Cd = Cd0(Re) + CD_SPIN_LINEAR * S
-// Start small; tune later.
 const CD_SPIN_LINEAR = 0.35;
 
 // --- Simple landing/run model params (temporary) ---
-const RUN_BASE = 0.035;        // turf/ground factor (0.02-0.05)
-const LANDING_POWER = 2.2;     // angle sensitivity (1.5-3.0)
-const SPIN_SCALE_RPM = 3200;   // spin scale (2500-3500)
-const SPIN_POWER = 1.4;        // spin sensitivity (1.0-2.0)
+const RUN_BASE = 0.035;
+const LANDING_POWER = 2.2;
+const SPIN_SCALE_RPM = 3200;
+const SPIN_POWER = 1.4;
+
+function computeWindDisplayValue(rawWindValue) {
+  return -rawWindValue;
+}
+
+function toPhysicsWind(rawWindValue) {
+  return -rawWindValue;
+}
+
+function computeMaxDisplayMeters(currentTotalMeters, previousTotalMeters) {
+  const maxTotalMeters = Math.max(currentTotalMeters || 0, previousTotalMeters || 0);
+  const paddedYards = maxTotalMeters / METERS_PER_YARD + 50;
+  const roundedYards = Math.ceil(paddedYards / X_TICK_YARDS) * X_TICK_YARDS;
+  return Math.max(roundedYards * METERS_PER_YARD, 150 * METERS_PER_YARD);
+}
 
 // =====================
 // DOM
 // =====================
-const form = document.getElementById("distance-form");
-const errorMessage = document.getElementById("error-message");
-const carryResult = document.getElementById("carryResult");
-const totalResult = document.getElementById("totalResult");
-const maxHeightResult = document.getElementById("maxHeightResult");
-const ballSpeedPreview = document.getElementById("ballSpeedPreview");
-const canvas = document.getElementById("trajectoryCanvas");
-const ctx = canvas.getContext("2d");
+const hasDom = typeof document !== "undefined";
+const form = hasDom ? document.getElementById("distance-form") : null;
+const errorMessage = hasDom ? document.getElementById("error-message") : null;
+const carryResult = hasDom ? document.getElementById("carryResult") : null;
+const totalResult = hasDom ? document.getElementById("totalResult") : null;
+const maxHeightResult = hasDom ? document.getElementById("maxHeightResult") : null;
+const ballSpeedPreview = hasDom ? document.getElementById("ballSpeedPreview") : null;
+const canvas = hasDom ? document.getElementById("trajectoryCanvas") : null;
+const ctx = canvas ? canvas.getContext("2d") : null;
 
-const headSpeedInput = document.getElementById("headSpeed");
-const smashFactorInput = document.getElementById("smashFactor");
-const launchAngleInput = document.getElementById("launchAngle");
-const spinRateInput = document.getElementById("spinRate");
-const windSpeedInput = document.getElementById("windSpeed");
+const headSpeedInput = hasDom ? document.getElementById("headSpeed") : null;
+const smashFactorInput = hasDom ? document.getElementById("smashFactor") : null;
+const launchAngleInput = hasDom ? document.getElementById("launchAngle") : null;
+const spinRateInput = hasDom ? document.getElementById("spinRate") : null;
+const windSpeedInput = hasDom ? document.getElementById("windSpeed") : null;
 
-const headSpeedValue = document.getElementById("headSpeedValue");
-const smashFactorValue = document.getElementById("smashFactorValue");
-const launchAngleValue = document.getElementById("launchAngleValue");
-const spinRateValue = document.getElementById("spinRateValue");
-const windSpeedValue = document.getElementById("windSpeedValue");
+const headSpeedValue = hasDom ? document.getElementById("headSpeedValue") : null;
+const smashFactorValue = hasDom ? document.getElementById("smashFactorValue") : null;
+const launchAngleValue = hasDom ? document.getElementById("launchAngleValue") : null;
+const spinRateValue = hasDom ? document.getElementById("spinRateValue") : null;
+const windSpeedValue = hasDom ? document.getElementById("windSpeedValue") : null;
 
 let previousResult = null;
 
-// =====================
-// Helpers
-// =====================
 function showError(message) {
+  if (!errorMessage) return;
   errorMessage.textContent = message;
   errorMessage.classList.add("show");
 }
 
 function clearError() {
+  if (!errorMessage) return;
   errorMessage.textContent = "";
   errorMessage.classList.remove("show");
 }
@@ -78,7 +91,6 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-// Cd0(Re) fits (KK base)
 function cdFromRe(re) {
   const cdLow = 1.29e-10 * re * re - 2.59e-5 * re + 1.5;
   const cdHigh = 1.91e-11 * re * re - 5.4e-6 * re + 0.56;
@@ -92,52 +104,49 @@ function cdFromRe(re) {
   return lerp(cdLow, cdHigh, t);
 }
 
-// Cl(S) fit (KK)
 function clFromSpinFactor(s) {
   return Math.max(0, -3.25 * s * s + 1.99 * s);
 }
 
-// Spin factor S = omega*r/V
 function spinFactorFrom(speed, spinRpm) {
-  const omega = (spinRpm * 2 * Math.PI) / 60; // rad/s
+  const omega = (spinRpm * 2 * Math.PI) / 60;
   return (omega * BALL_RADIUS) / Math.max(speed, EPSILON);
 }
 
-// wind slider color
+// 風スライダーは中央0、左右にカラーバーを伸ばす
 function updateWindSliderIndicator() {
+  if (!windSpeedInput) return;
   const min = Number(windSpeedInput.min);
   const max = Number(windSpeedInput.max);
-  const val = Number(windSpeedInput.value);
+  const rawVal = Number(windSpeedInput.value);
   const centerPct = ((0 - min) / (max - min)) * 100;
-  const valPct = ((val - min) / (max - min)) * 100;
+  const valPct = ((rawVal - min) / (max - min)) * 100;
 
-  if (Math.abs(val) < 1e-9) {
+  if (Math.abs(rawVal) < 1e-9) {
     windSpeedInput.style.background = "linear-gradient(to right, #cfd8e3 0%, #cfd8e3 100%)";
     return;
   }
 
-  const left = Math.min(centerPct, valPct);
-  const right = Math.max(centerPct, valPct);
-  windSpeedInput.style.background =
-    `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${left}%, #2b78ff ${left}%, #2b78ff ${right}%, #cfd8e3 ${right}%, #cfd8e3 100%)`;
+  if (rawVal > 0) {
+    windSpeedInput.style.background = `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${centerPct}%, #ff8a80 ${centerPct}%, #ff5a4f ${valPct}%, #cfd8e3 ${valPct}%, #cfd8e3 100%)`;
+  } else {
+    windSpeedInput.style.background = `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${valPct}%, #4f9dff ${valPct}%, #2b78ff ${centerPct}%, #cfd8e3 ${centerPct}%, #cfd8e3 100%)`;
+  }
 }
 
-// (UI用) 3000rpmまでは実入力を採用し、3000〜5000rpmは効果を緩やかに補間
 function effectiveSpinRate(spinRate) {
   if (spinRate <= 3000) return spinRate;
   const t = (spinRate - 3000) / 2000;
   return lerp(3000, 3800, t);
 }
 
-// 4%/s spin decay
 function spinAtTimeRpm(spin0Rpm, tSec) {
   return spin0Rpm * Math.exp(-SPIN_DECAY_RATE * tSec);
 }
 
-// New: simple run model with landing angle + spin
 function computeRunMetersFromLanding(landingVx, landingVy, spinLandRpm) {
   const vx = Math.max(landingVx, EPSILON);
-  const gamma = Math.atan(Math.abs(landingVy) / vx); // rad (horizontal reference)
+  const gamma = Math.atan(Math.abs(landingVy) / vx);
 
   const angleFactor = Math.pow(Math.cos(gamma), LANDING_POWER);
   const spinFactor = 1 / (1 + Math.pow(spinLandRpm / SPIN_SCALE_RPM, SPIN_POWER));
@@ -146,6 +155,7 @@ function computeRunMetersFromLanding(landingVx, landingVy, spinLandRpm) {
 }
 
 function updateOutputs() {
+  if (!headSpeedInput) return;
   const headSpeed = Number(headSpeedInput.value);
   const smashFactor = Number(smashFactorInput.value);
 
@@ -154,8 +164,9 @@ function updateOutputs() {
   launchAngleValue.textContent = `${Number(launchAngleInput.value).toFixed(1)}°`;
   spinRateValue.textContent = Number(spinRateInput.value).toFixed(0);
 
-  const wind = Number(windSpeedInput.value);
-  windSpeedValue.textContent = wind.toFixed(1);
+  const windRaw = Number(windSpeedInput.value);
+  const windForDisplay = computeWindDisplayValue(windRaw);
+  windSpeedValue.textContent = windForDisplay.toFixed(1);
   updateWindSliderIndicator();
 
   ballSpeedPreview.textContent = `${(headSpeed * smashFactor).toFixed(1)} m/s`;
@@ -171,9 +182,6 @@ function interpolateAtGround(previous, current) {
   };
 }
 
-// =====================
-// Physics
-// =====================
 function simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed) {
   const launchRad = (launchAngleDeg * Math.PI) / 180;
   const dt = 0.01;
@@ -188,40 +196,29 @@ function simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed) {
   let maxHeight = 0;
   const trajectory = [{ x: 0, y: 0 }];
   let landingState = state;
-
   let tSec = 0;
 
   for (let i = 0; i < 3000; i += 1) {
     const previous = { ...state };
 
-    // 対気速度 = ボール速度 + 風向成分（あなたの符号定義のまま）
     const relVx = state.vx + windSpeed;
     const relVy = state.vy;
     const airSpeed = Math.max(Math.hypot(relVx, relVy), EPSILON);
 
-    // Reynolds number (use relative air speed)
     const re = (airSpeed * BALL_DIAMETER) / AIR_KINEMATIC_VISCOSITY;
     const reClamped = clamp(re, 50000, 200000);
 
-    // ----- Spin (decay) -----
     const spin0 = effectiveSpinRate(spinRate);
     const spinNow = spinAtTimeRpm(spin0, tSec);
-
-    // Spin factor S (use airSpeed for V in S = ωr/V)
     const S = spinFactorFrom(airSpeed, spinNow);
 
-    // ----- Cl(S) -----
     const cl = clFromSpinFactor(S);
-
-    // ----- Cd(Re,S) -----
     const cd0 = cdFromRe(reClamped);
     const cd = clamp(cd0 + CD_SPIN_LINEAR * S, 0.05, 1.2);
 
-    // Forces
     const dragForce = 0.5 * AIR_DENSITY * cd * BALL_AREA * airSpeed * airSpeed;
     const liftForce = 0.5 * AIR_DENSITY * cl * BALL_AREA * airSpeed * airSpeed;
 
-    // Force directions: drag opposite to relative wind; lift perpendicular to relative wind
     const ax = (-dragForce * relVx / airSpeed - liftForce * relVy / airSpeed) / BALL_MASS;
     const ay = -GRAVITY + (-dragForce * relVy / airSpeed + liftForce * relVx / airSpeed) / BALL_MASS;
 
@@ -233,7 +230,6 @@ function simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed) {
     maxHeight = Math.max(maxHeight, state.y);
 
     if (state.y < 0) {
-      // better time estimate: fraction of last step to reach y=0
       const ratio = previous.y / Math.max(previous.y - state.y, EPSILON);
       tSec += dt * ratio;
 
@@ -244,7 +240,6 @@ function simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed) {
 
     trajectory.push({ x: state.x, y: state.y });
     landingState = { ...state };
-
     tSec += dt;
   }
 
@@ -262,11 +257,9 @@ function calculateDistances(headSpeed, smashFactor, launchAngleDeg, spinRate, wi
   const ballSpeed = headSpeed * smashFactor;
   const flight = simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed);
 
-  // landing spin (decayed)
   const spin0 = effectiveSpinRate(spinRate);
   const spinLand = spinAtTimeRpm(spin0, flight.flightTimeSec);
 
-  // NEW run model (angle + spin)
   const runMeters = computeRunMetersFromLanding(
     flight.landingVx,
     flight.landingVy,
@@ -282,9 +275,6 @@ function calculateDistances(headSpeed, smashFactor, launchAngleDeg, spinRate, wi
   };
 }
 
-// =====================
-// Validation
-// =====================
 function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRaw, windSpeedRaw) {
   if (!headSpeedRaw || !smashFactorRaw || !launchAngleRaw || !spinRateRaw || !windSpeedRaw) {
     return "すべての入力欄を入力してください。";
@@ -327,10 +317,8 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   return null;
 }
 
-// =====================
-// Drawing
-// =====================
-function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scaleY, pad, groundY, maxDisplayMeters) {
+function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scaleY, pad, groundY, maxDisplayMeters, peakColor = "#ff4d4f") {
+  if (!ctx || !canvas) return { landingX: 0, peakPoint: { x: 0, y: 0 }, overflow: false };
   const maxXPixel = canvas.width - pad;
 
   ctx.save();
@@ -387,11 +375,9 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
     ctx.beginPath();
     ctx.arc(landingX, groundY, 4, 0, Math.PI * 2);
     ctx.fill();
-  } else {
-    ctx.font = "13px sans-serif";
-    ctx.fillText("→", maxXPixel + 4, groundY - 6);
   }
 
+  ctx.fillStyle = peakColor;
   ctx.beginPath();
   ctx.arc(peakPoint.x, peakPoint.y, 4, 0, Math.PI * 2);
   ctx.fill();
@@ -400,7 +386,34 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
   return { landingX, peakPoint, overflow };
 }
 
+function drawRunSegment(result, color, scaleX, pad, groundY, maxDisplayMeters, alpha = 1) {
+  if (!ctx || !canvas) return;
+  const carryX = Math.min(pad + result.carryMeters * scaleX, canvas.width - pad);
+  const totalX = Math.min(pad + result.totalMeters * scaleX, canvas.width - pad);
+
+  if (totalX <= carryX + 2) return;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.moveTo(carryX, groundY - 1);
+  ctx.lineTo(totalX, groundY - 1);
+  ctx.stroke();
+
+  if (result.totalMeters <= maxDisplayMeters) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(totalX, groundY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawTrajectory(currentResult, previous) {
+  if (!ctx || !canvas) return;
   const pad = 36;
   const groundY = canvas.height - pad;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -411,15 +424,6 @@ function drawTrajectory(currentResult, previous) {
   ctx.fillStyle = groundGradient;
   ctx.fillRect(pad, groundY, canvas.width - pad * 2, canvas.height - groundY);
 
-  ctx.strokeStyle = "#93c08a";
-  ctx.lineWidth = 1;
-  for (let x = pad; x <= canvas.width - pad; x += 40) {
-    ctx.beginPath();
-    ctx.moveTo(x, groundY + 2);
-    ctx.lineTo(x + 16, canvas.height - 8);
-    ctx.stroke();
-  }
-
   ctx.strokeStyle = "#d0e2ff";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -429,13 +433,20 @@ function drawTrajectory(currentResult, previous) {
 
   const width = canvas.width - pad * 2;
   const height = canvas.height - pad * 2;
-  const maxDisplayMeters = MAX_DISPLAY_YARDS * METERS_PER_YARD;
-  const scaleX = width / maxDisplayMeters;
-  const scaleY = height / Math.max(Math.max(currentResult.maxHeightMeters, previous?.maxHeightMeters || 0) * 1.35, 1);
+
+  const baseDisplayMeters = computeMaxDisplayMeters(currentResult.totalMeters, previous?.totalMeters || 0);
+  const maxHeightMeters = Math.max(Math.max(currentResult.maxHeightMeters, previous?.maxHeightMeters || 0) * 1.35, 1);
+  const minDisplayForEqualScale = (width * maxHeightMeters) / height;
+  const maxDisplayMeters = Math.max(baseDisplayMeters, minDisplayForEqualScale);
+
+  const unifiedScale = width / maxDisplayMeters;
+  const scaleX = unifiedScale;
+  const scaleY = unifiedScale;
 
   ctx.strokeStyle = "rgba(255,255,255,0.18)";
   ctx.lineWidth = 1;
-  for (let yard = 50; yard <= MAX_DISPLAY_YARDS; yard += X_TICK_YARDS) {
+  const maxDisplayYards = Math.floor(maxDisplayMeters / METERS_PER_YARD);
+  for (let yard = X_TICK_YARDS; yard <= maxDisplayYards; yard += X_TICK_YARDS) {
     const x = pad + yard * METERS_PER_YARD * scaleX;
     ctx.beginPath();
     ctx.moveTo(x, groundY);
@@ -447,83 +458,75 @@ function drawTrajectory(currentResult, previous) {
   }
 
   if (previous) {
-    drawSingleTrajectory(previous.trajectory, "#8ea0b4", 2, 0.35, scaleX, scaleY, pad, groundY, maxDisplayMeters);
+    drawSingleTrajectory(previous.trajectory, "#8ea0b4", 2, 0.35, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#c66");
+    drawRunSegment(previous, "#8ea0b4", scaleX, pad, groundY, maxDisplayMeters, 0.45);
   }
 
-  const currentMarks = drawSingleTrajectory(currentResult.trajectory, "#41a5ff", 3, 1, scaleX, scaleY, pad, groundY, maxDisplayMeters);
+  const currentMarks = drawSingleTrajectory(currentResult.trajectory, "#41a5ff", 3, 1, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#ff3b30");
+  drawRunSegment(currentResult, "#111", scaleX, pad, groundY, maxDisplayMeters, 1);
 
   ctx.fillStyle = "#f3f7ff";
   ctx.font = "14px sans-serif";
-  if (!currentMarks.overflow) {
-    ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
-  } else {
-    ctx.fillText("380yd+", currentMarks.landingX - 34, groundY - 10);
-  }
+  ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
   ctx.fillText("最大到達点", currentMarks.peakPoint.x - 36, currentMarks.peakPoint.y - 12);
-  ctx.fillText("380 yd", canvas.width - pad - 36, groundY - 12);
-
-  // ラン区間（黒の点線）
-  const carryX = Math.min(pad + currentResult.carryMeters * scaleX, canvas.width - pad);
-  const totalX = Math.min(pad + currentResult.totalMeters * scaleX, canvas.width - pad);
-  if (totalX > carryX + 2) {
-    ctx.save();
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 5]);
-    ctx.beginPath();
-    ctx.moveTo(carryX, groundY - 1);
-    ctx.lineTo(totalX, groundY - 1);
-    ctx.stroke();
-    ctx.restore();
-  }
+  ctx.fillText(`${Math.round(maxDisplayMeters / METERS_PER_YARD)} yd`, canvas.width - pad - 42, groundY - 12);
 }
 
-// =====================
-// Events
-// =====================
-[headSpeedInput, smashFactorInput, launchAngleInput, spinRateInput, windSpeedInput].forEach((input) => {
-  input.addEventListener("input", updateOutputs);
-});
+if (hasDom && form && headSpeedInput && smashFactorInput && launchAngleInput && spinRateInput && windSpeedInput) {
+  [headSpeedInput, smashFactorInput, launchAngleInput, spinRateInput, windSpeedInput].forEach((input) => {
+    input.addEventListener("input", updateOutputs);
+  });
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
 
-  const headSpeedRaw = headSpeedInput.value.trim();
-  const smashFactorRaw = smashFactorInput.value.trim();
-  const launchAngleRaw = launchAngleInput.value.trim();
-  const spinRateRaw = spinRateInput.value.trim();
-  const windSpeedRaw = windSpeedInput.value.trim();
+    const headSpeedRaw = headSpeedInput.value.trim();
+    const smashFactorRaw = smashFactorInput.value.trim();
+    const launchAngleRaw = launchAngleInput.value.trim();
+    const spinRateRaw = spinRateInput.value.trim();
+    const windSpeedRaw = windSpeedInput.value.trim();
 
-  const error = validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRaw, windSpeedRaw);
+    const error = validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRaw, windSpeedRaw);
 
-  if (error) {
-    showError(error);
-    maxHeightResult.textContent = "-";
-    carryResult.textContent = "-";
-    totalResult.textContent = "-";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    return;
-  }
+    if (error) {
+      showError(error);
+      maxHeightResult.textContent = "-";
+      carryResult.textContent = "-";
+      totalResult.textContent = "-";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
 
-  clearError();
+    clearError();
 
-  const result = calculateDistances(
-    Number(headSpeedRaw),
-    Number(smashFactorRaw),
-    Number(launchAngleRaw),
-    Number(spinRateRaw),
-    Number(windSpeedRaw)
-  );
+    const result = calculateDistances(
+      Number(headSpeedRaw),
+      Number(smashFactorRaw),
+      Number(launchAngleRaw),
+      Number(spinRateRaw),
+      toPhysicsWind(Number(windSpeedRaw))
+    );
 
-  const carryYd = result.carryMeters / METERS_PER_YARD;
-  const totalYd = result.totalMeters / METERS_PER_YARD;
+    const carryYd = result.carryMeters / METERS_PER_YARD;
+    const totalYd = result.totalMeters / METERS_PER_YARD;
 
-  maxHeightResult.textContent = `${result.maxHeightMeters.toFixed(1)} m`;
-  carryResult.textContent = `${carryYd.toFixed(1)} yd`;
-  totalResult.textContent = `${totalYd.toFixed(1)} yd`;
+    maxHeightResult.textContent = `${result.maxHeightMeters.toFixed(1)} m`;
+    carryResult.textContent = `${carryYd.toFixed(1)} yd`;
+    totalResult.textContent = `${totalYd.toFixed(1)} yd`;
 
-  drawTrajectory(result, previousResult);
-  previousResult = result;
-});
+    drawTrajectory(result, previousResult);
+    previousResult = result;
+  });
 
-updateOutputs();
+  updateOutputs();
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    computeWindDisplayValue,
+    toPhysicsWind,
+    computeMaxDisplayMeters,
+    calculateDistances,
+    validateInputs,
+  };
+}
