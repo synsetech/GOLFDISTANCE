@@ -10,7 +10,7 @@
     <main class="container">
       <h1>ゴルフ飛距離シミュレーター</h1>
       <p class="note">
-        ※ 本ツールは2次元モデルの簡易推定です。バックスピン・抗力係数・揚力係数は簡易化して扱い、風や地面状況などは反映していません。
+        ※ 本ツールは2次元モデルの簡易推定です。バックスピンは 2500 rpm 固定で計算し、風や地面状況などは反映していません。前回計算の弾道は薄い線で重ねて表示します。
       </p>
 
       <section class="card">
@@ -43,15 +43,6 @@
             <small>範囲: 10.0〜18.0°</small>
           </div>
 
-          <div class="field">
-            <label for="spinRate">バックスピン（rpm）</label>
-            <div class="range-row">
-              <input id="spinRate" name="spinRate" type="range" min="1500" max="3000" step="50" value="2500" required />
-              <output id="spinRateValue" for="spinRate">2500</output>
-            </div>
-            <small>範囲: 1500〜3000 rpm</small>
-          </div>
-
           <p id="error-message" class="error" aria-live="polite"></p>
 
           <button type="submit">計算する</button>
@@ -62,7 +53,7 @@
         <h2>結果</h2>
         <canvas id="trajectoryCanvas" width="800" height="420" aria-label="側面からの2D弾道図"></canvas>
         <ul class="result-list">
-          <li><span>側面からの2D弾道図</span><span>上部キャンバスに表示</span></li>
+          <li><span>側面からの2D弾道図</span><span>濃線: 今回 / 薄線: 前回</span></li>
           <li><span>ボール初速</span><strong id="ballSpeedResult">-</strong></li>
           <li><span>最大到達高さ</span><strong id="maxHeightResult">-</strong></li>
           <li><span>キャリー距離</span><strong id="carryResult">-</strong></li>
