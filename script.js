@@ -165,108 +165,86 @@ function signNonZero(x) {
   return x >= 0 ? 1 : -1;
 }
 
-// Penner/Roh-style: bounce (impulse + friction) + slide-to-roll + rolling resistance
-function computeRunMetersFromLanding(landingVx, landingVy, spinLandRpm) {
-  // Inputs:
-  // landingVx [m/s] : forward + (downrange)
-  // landingVy [m/s] : upward + (so landing is negative)
-  // spinLandRpm [rpm] : backspin assumed positive
-
-  let vx = landingVx;
-  let vyIn = landingVy; // should be negative at impact
-  let omega = rpmToOmega(spinLandRpm); // rad/s
-
+// Simple & stable run model (spin ignored)
+// - landing angle reduces v0
+// - rolling decel: dv/dt = -(a0 + k*v)
+function computeRunMetersFromLanding(landingVx, landingVy, _spinLandRpmIgnored) {
   // Guard
-  if (!Number.isFinite(vx) || !Number.isFinite(vyIn) || !Number.isFinite(omega)) return 0;
-  if (vx <= 0) return 0;
+  if (!Number.isFinite(landingVx) || !Number.isFinite(landingVy)) return 0;
+  if (landingVx <= 0) return 0;
 
-  const m = BALL_MASS;
-  const R = BALL_RADIUS;
+  // 1) impact angle gamma [rad], using downward speed magnitude
+  const vyDown = Math.max(0, -landingVy);
+  const gamma = Math.atan2(vyDown, Math.max(landingVx, EPSILON)); // 0=shallow, larger=steep
+
+  // 2) make "roll start speed" v0 by damping with impact angle
+  // v0 = vx / (1 + K * tan(gamma)^2)  (very stable, easy to tune)
+  const K_ANGLE = 1; // 2..8 : bigger = steeper landing loses more speed
+  const tanG = Math.tan(gamma);
+  let v0 = landingVx / (1 + K_ANGLE * tanG * tanG);
+
+  // extra safety clamps (prevents extreme carry/run when something upstream goes odd)
+  v0 = clamp(v0, 0, landingVx);
+
+  // 3) rolling resistance model params (turf)
+  // a0 ~ constant loss (m/s^2), k ~ velocity-proportional loss (1/s)
+  // Fairway-ish defaults (tune):
+  const a0 = 1.2;     // 0.6..1.6  (bigger -> shorter run)
+  const k  = 0.3;    // 0.10..0.35 (bigger -> shorter run)
+
+  // 4) distance until stop for dv/dt = -(a0 + k v)
+  // s = v0/k - (a0/k^2) * ln(1 + k v0/a0)
+  const kvOverA0 = (k * v0) / Math.max(a0, EPSILON);
+  const run = (v0 / Math.max(k, EPSILON)) - (a0 / Math.max(k * k, EPSILON)) * Math.log(1 + kvOverA0);
+
+  // 5) final clamp (optional, but makes UI bulletproof)
+  const RUN_MAX_METERS = 120; // ~131 yd cap (set as you like)
+  return clamp(run, 0, RUN_MAX_METERS);
+}
+
+function computeRunWithBounceFromLanding(landingVx, landingVy, spinLandRpm) {
+  const runPath = [{ x: 0, y: 0 }];
+
+  if (!Number.isFinite(landingVx) || !Number.isFinite(landingVy) || landingVx <= 0) {
+    return { runMeters: 0, runPath };
+  }
+
   const g = GRAVITY;
-
   const eN = clamp(GROUND.eN, 0, 0.9);
-  const mu = clamp(GROUND.mu, 0.05, 1.2);
-  const cRR = clamp(GROUND.cRR, 0.001, 0.2);
+  const bounceHorizLoss = 0.94;
+  const maxBounceHeightMeters = 12;
+  const minBounceVy = GROUND.vyStop;
 
-  // === (A) Bounce(s): normal restitution + tangential impulse limited by friction ===
-  // Model: solid sphere, I = 2/5 m R^2
-  // Pre-impact slip at contact: u = vx - omega*R
-  // Required tangential impulse to reach no-slip at separation: Jt_req = -(2/7) m u
-  // Clamp by |Jt| <= mu * Jn, where Jn = -(1+eN) m vyIn (vyIn is negative)
-  let bounces = 0;
+  let vx = Math.max(landingVx, 0);
+  let vyDown = Math.max(0, -landingVy);
+  let x = 0;
 
-  // Ensure vyIn is negative for impact; if not, treat as already on ground
-  if (vyIn < 0) {
-    while (bounces < GROUND.maxBounces) {
-      const Jn = -(1 + eN) * m * vyIn; // positive
-      if (Jn <= 0) break;
+  for (let i = 0; i < GROUND.maxBounces; i += 1) {
+    const vyUp = vyDown * eN;
+    if (vyUp < minBounceVy || vx <= 0) break;
 
-      const u = vx - omega * R; // slip speed at contact (+ means ball surface slipping forward vs ground)
-      const JtReq = -(2 / 7) * m * u;
-      const JtMax = mu * Jn;
-      const Jt = clamp(JtReq, -JtMax, JtMax);
+    const tBounce = (2 * vyUp) / g;
+    const bounceDist = vx * tBounce;
+    x += Math.max(0, bounceDist);
 
-      // Apply impulses
-      vx = vx + Jt / m;
-      // Torque sign: friction impulse at contact changes spin opposite to slip
-      omega = omega - (5 * Jt) / (2 * m * R);
+    const peakHeight = clamp((vyUp * vyUp) / (2 * g), 0, maxBounceHeightMeters);
+    runPath.push({ x: x - bounceDist / 2, y: peakHeight });
+    runPath.push({ x, y: 0 });
 
-      // Vertical bounce
-      const vyOut = -eN * vyIn; // positive
-      if (vyOut < GROUND.vyStop) {
-        // stop bouncing -> go to rolling/sliding with current vx, omega
-        break;
-      }
-
-      // Next impact: assume short flight, negligible aero changes between micro-bounces
-      vyIn = -vyOut;
-      bounces += 1;
-
-      // If vx got killed or reversed, stop
-      if (vx <= 0) return 0;
-    }
+    vx *= bounceHorizLoss;
+    vyDown = vyUp;
   }
 
-  // === (B) Sliding phase until pure rolling (vx = omega*R) ===
-  // Kinetic friction F = mu*m*g opposing slip (u = vx - omega R)
-  // vx_dot = -mu*g*sign(u)
-  // omega_dot = +(5/2)*(mu*g/R)*sign(u)
-  // u_dot = -(7/2)*mu*g*sign(u)  -> |u| decreases linearly to 0
-  let run = 0;
+  const rollMeters = computeRunMetersFromLanding(vx, 0, spinLandRpm);
+  const totalRunMeters = x + rollMeters;
+  runPath.push({ x: totalRunMeters, y: 0 });
 
-  let u0 = vx - omega * R;
-  if (Math.abs(u0) > 1e-6) {
-    const s = signNonZero(u0); // sign of slip
-    const uDotMag = (7 / 2) * mu * g;
-    const tToRoll = Math.abs(u0) / Math.max(uDotMag, EPSILON);
-
-    // Distance during sliding: x = vx*t + 0.5*a*t^2, a = -mu*g*s
-    const a = -mu * g * s;
-    const slideDist = vx * tToRoll + 0.5 * a * tToRoll * tToRoll;
-
-    // Update vx, omega after sliding
-    vx = vx + a * tToRoll;
-    omega = omega + (5 / 2) * (mu * g / R) * s * tToRoll;
-
-    run += Math.max(0, slideDist);
-
-    // If friction made vx negative (rare), stop
-    if (vx <= 0) return Math.max(0, run);
-  }
-
-  // Enforce pure rolling consistency (numerical tidy)
-  // For pure rolling, vx ~= omega*R. Keep vx as state and adjust omega.
-  omega = vx / R;
-
-  // === (C) Pure rolling with rolling resistance until stop ===
-  // a_rr = cRR * g, distance = vx^2 / (2 a_rr)
-  const aRR = cRR * g;
-  const rollDist = (vx * vx) / Math.max(2 * aRR, EPSILON);
-  run += Math.max(0, rollDist);
-
-  return Math.max(0, run);
+  return {
+    runMeters: totalRunMeters,
+    runPath,
+  };
 }
-}
+
 
 function updateOutputs() {
   if (!headSpeedInput) return;
@@ -374,17 +352,23 @@ function calculateDistances(headSpeed, smashFactor, launchAngleDeg, spinRate, wi
   const spin0 = effectiveSpinRate(spinRate);
   const spinLand = spinAtTimeRpm(spin0, flight.flightTimeSec);
 
-  const runMeters = computeRunMetersFromLanding(
+  const run = computeRunWithBounceFromLanding(
     flight.landingVx,
     flight.landingVy,
     spinLand
   );
 
+  const runTrajectory = run.runPath.map((point) => ({
+    x: flight.carryMeters + point.x,
+    y: point.y,
+  }));
+
   return {
     ballSpeed,
     carryMeters: flight.carryMeters,
-    totalMeters: flight.carryMeters + runMeters,
+    totalMeters: flight.carryMeters + run.runMeters,
     trajectory: flight.trajectory,
+    runTrajectory,
     maxHeightMeters: flight.maxHeightMeters,
   };
 }
@@ -500,27 +484,42 @@ function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scale
   return { landingX, peakPoint, overflow };
 }
 
-function drawRunSegment(result, color, scaleX, pad, groundY, maxDisplayMeters, alpha = 1) {
+function drawRunSegment(result, color, scaleX, scaleY, pad, groundY, maxDisplayMeters, alpha = 1) {
   if (!ctx || !canvas) return;
-  const carryX = Math.min(pad + result.carryMeters * scaleX, canvas.width - pad);
-  const totalX = Math.min(pad + result.totalMeters * scaleX, canvas.width - pad);
 
-  if (totalX <= carryX + 2) return;
+  const runTrajectory = result.runTrajectory || [
+    { x: result.carryMeters, y: 0 },
+    { x: result.totalMeters, y: 0 },
+  ];
+
+  if (runTrajectory.length < 2) return;
+
+  const visiblePoints = runTrajectory
+    .filter((point) => point.x <= maxDisplayMeters)
+    .map((point) => ({
+      x: pad + point.x * scaleX,
+      y: groundY - point.y * scaleY,
+    }));
+
+  if (visiblePoints.length < 2) return;
 
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  ctx.setLineDash([6, 5]);
+  ctx.setLineDash([7, 5]);
   ctx.beginPath();
-  ctx.moveTo(carryX, groundY - 1);
-  ctx.lineTo(totalX, groundY - 1);
+  ctx.moveTo(visiblePoints[0].x, visiblePoints[0].y - 1);
+  for (let i = 1; i < visiblePoints.length; i += 1) {
+    ctx.lineTo(visiblePoints[i].x, visiblePoints[i].y - 1);
+  }
   ctx.stroke();
 
+  const last = visiblePoints[visiblePoints.length - 1];
   if (result.totalMeters <= maxDisplayMeters) {
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(totalX, groundY, 4, 0, Math.PI * 2);
+    ctx.arc(last.x, groundY, 4, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -573,11 +572,11 @@ function drawTrajectory(currentResult, previous) {
 
   if (previous) {
     drawSingleTrajectory(previous.trajectory, "#8ea0b4", 2, 0.35, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#c66");
-    drawRunSegment(previous, "#8ea0b4", scaleX, pad, groundY, maxDisplayMeters, 0.45);
+    drawRunSegment(previous, "#8ea0b4", scaleX, scaleY, pad, groundY, maxDisplayMeters, 0.45);
   }
 
   const currentMarks = drawSingleTrajectory(currentResult.trajectory, "#41a5ff", 3, 1, scaleX, scaleY, pad, groundY, maxDisplayMeters, "#ff3b30");
-  drawRunSegment(currentResult, "#111", scaleX, pad, groundY, maxDisplayMeters, 1);
+  drawRunSegment(currentResult, "#111", scaleX, scaleY, pad, groundY, maxDisplayMeters, 1);
 
   ctx.fillStyle = "#f3f7ff";
   ctx.font = "14px sans-serif";
@@ -642,5 +641,7 @@ if (typeof module !== "undefined" && module.exports) {
     computeMaxDisplayMeters,
     calculateDistances,
     validateInputs,
+    computeRunMetersFromLanding,
+    computeRunWithBounceFromLanding,
   };
 }
