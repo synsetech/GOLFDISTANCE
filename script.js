@@ -9,9 +9,6 @@ const BALL_RADIUS = BALL_DIAMETER / 2;
 const BALL_AREA = Math.PI * BALL_RADIUS * BALL_RADIUS;
 const AIR_KINEMATIC_VISCOSITY = 1.5e-5;
 
-// (旧) RUN_COEFFICIENT は使わなくなるけど残してOK
-const RUN_COEFFICIENT = 0.01;
-
 const METERS_PER_YARD = 0.9144;
 const EPSILON = 1e-6;
 const X_TICK_YARDS = 50;
@@ -24,8 +21,8 @@ const SPIN_DECAY_RATE = 0.04; // 1/s
 const CD_SPIN_LINEAR = 0.35;
 
 // --- Simple landing/run model params (temporary) ---
-const RUN_BASE = 0.035;
-const LANDING_POWER = 2.2;
+const RUN_BASE = 0.055;
+const LANDING_POWER = 5.5;
 const SPIN_SCALE_RPM = 3200;
 const SPIN_POWER = 1.4;
 
