@@ -10,75 +10,144 @@
     <main class="container">
       <h1>ゴルフボール飛距離シミュレーター ドライバー&ウッド</h1>
       <p class="note">
-        ※ 本ツールは2次元モデルの簡易推定です。バックスピン・抗力係数・揚力係数は簡易化して扱い、風や地面状況などは反映していません。前回計算の弾道は薄い線で重ねて表示します。
+        ※ 本ツールは2次元モデルの簡易推定です。バックスピン・抗力係数・揚力係数は簡易化して扱い、風や地面状況などは反映していません。
       </p>
 
-      <section class="card">
-        <h2>入力</h2>
-        <form id="distance-form" novalidate>
-          <div class="field">
-            <label for="headSpeed">ヘッドスピード（m/s）</label>
-            <div class="range-row">
-              <input id="headSpeed" name="headSpeed" type="range" min="25" max="60" step="0.1" value="45" required />
-              <output id="headSpeedValue" for="headSpeed">45.0</output>
+      <section class="input-grid" aria-label="左右比較入力">
+        <article class="card">
+          <h2>入力</h2>
+          <form id="distance-form-left" class="distance-form" novalidate>
+            <div class="field">
+              <label for="headSpeedLeft">ヘッドスピード（m/s）</label>
+              <div class="range-row">
+                <input id="headSpeedLeft" name="headSpeed" type="range" min="25" max="60" step="0.1" value="45" required />
+                <output id="headSpeedValueLeft" for="headSpeedLeft">45.0</output>
+              </div>
+              <small>範囲: 25.0〜60.0 m/s</small>
             </div>
-            <small>範囲: 25.0〜60.0 m/s</small>
-          </div>
 
-          <div class="inline-metric" aria-live="polite">
-            <span>ボール初速（ヘッドスピード × ミート率）</span>
-            <strong id="ballSpeedPreview">-</strong>
-          </div>
-
-          <div class="field">
-            <label for="smashFactor">ミート率</label>
-            <div class="range-row">
-              <input id="smashFactor" name="smashFactor" type="range" min="1.3" max="1.56" step="0.01" value="1.45" required />
-              <output id="smashFactorValue" for="smashFactor">1.45</output>
+            <div class="inline-metric" aria-live="polite">
+              <span>ボール初速（ヘッドスピード × ミート率）</span>
+              <strong id="ballSpeedPreviewLeft">-</strong>
             </div>
-            <small>範囲: 1.30〜1.56</small>
-          </div>
 
-          <div class="field">
-            <label for="launchAngle">打ち出し角（度）</label>
-            <div class="range-row">
-              <input id="launchAngle" name="launchAngle" type="range" min="8" max="25" step="0.1" value="15" required />
-              <output id="launchAngleValue" for="launchAngle">15.0°</output>
+            <div class="field">
+              <label for="smashFactorLeft">ミート率</label>
+              <div class="range-row">
+                <input id="smashFactorLeft" name="smashFactor" type="range" min="1.3" max="1.56" step="0.01" value="1.45" required />
+                <output id="smashFactorValueLeft" for="smashFactorLeft">1.45</output>
+              </div>
+              <small>範囲: 1.30〜1.56</small>
             </div>
-            <small>範囲: 8.0〜25.0°</small>
-          </div>
 
-
-          <div class="field">
-            <label for="windSpeed">風向風速（m/s）</label>
-            <div class="range-row">
-              <input id="windSpeed" name="windSpeed" type="range" min="-10" max="10" step="0.5" value="0" required />
-              <output id="windSpeedValue" for="windSpeed">0.0</output>
+            <div class="field">
+              <label for="launchAngleLeft">打ち出し角（度）</label>
+              <div class="range-row">
+                <input id="launchAngleLeft" name="launchAngle" type="range" min="8" max="25" step="0.1" value="15" required />
+                <output id="launchAngleValueLeft" for="launchAngleLeft">15.0°</output>
+              </div>
+              <small>範囲: 8.0〜25.0°</small>
             </div>
-            <small>範囲: -10.0（アゲインスト）〜 +10.0（フォロー）</small>
-          </div>
 
-          <div class="field">
-            <label for="spinRate">スピンレート（rpm）</label>
-            <div class="range-row">
-              <input id="spinRate" name="spinRate" type="range" min="1500" max="5000" step="50" value="2500" required />
-              <output id="spinRateValue" for="spinRate">2500</output>
+            <div class="field">
+              <label for="windSpeedLeft">風向風速（m/s）</label>
+              <div class="range-row">
+                <input id="windSpeedLeft" name="windSpeed" type="range" min="-10" max="10" step="0.5" value="0" required />
+                <output id="windSpeedValueLeft" for="windSpeedLeft">0.0</output>
+              </div>
+              <small>範囲: -10.0（アゲインスト）〜 +10.0（フォロー）</small>
             </div>
-            <small>範囲: 1500〜5000 rpm</small>
-          </div>
 
-          <p id="error-message" class="error" aria-live="polite"></p>
+            <div class="field">
+              <label for="spinRateLeft">スピンレート（rpm）</label>
+              <div class="range-row">
+                <input id="spinRateLeft" name="spinRate" type="range" min="1500" max="5000" step="50" value="2500" required />
+                <output id="spinRateValueLeft" for="spinRateLeft">2500</output>
+              </div>
+              <small>範囲: 1500〜5000 rpm</small>
+            </div>
 
-          <button type="submit">計算する</button>
-        </form>
+            <p id="error-message-left" class="error" aria-live="polite"></p>
+
+            <button type="submit">計算する</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>入力</h2>
+          <form id="distance-form-right" class="distance-form" novalidate>
+            <div class="field">
+              <label for="headSpeedRight">ヘッドスピード（m/s）</label>
+              <div class="range-row">
+                <input id="headSpeedRight" name="headSpeed" type="range" min="25" max="60" step="0.1" value="45" required />
+                <output id="headSpeedValueRight" for="headSpeedRight">45.0</output>
+              </div>
+              <small>範囲: 25.0〜60.0 m/s</small>
+            </div>
+
+            <div class="inline-metric" aria-live="polite">
+              <span>ボール初速（ヘッドスピード × ミート率）</span>
+              <strong id="ballSpeedPreviewRight">-</strong>
+            </div>
+
+            <div class="field">
+              <label for="smashFactorRight">ミート率</label>
+              <div class="range-row">
+                <input id="smashFactorRight" name="smashFactor" type="range" min="1.3" max="1.56" step="0.01" value="1.45" required />
+                <output id="smashFactorValueRight" for="smashFactorRight">1.45</output>
+              </div>
+              <small>範囲: 1.30〜1.56</small>
+            </div>
+
+            <div class="field">
+              <label for="launchAngleRight">打ち出し角（度）</label>
+              <div class="range-row">
+                <input id="launchAngleRight" name="launchAngle" type="range" min="8" max="25" step="0.1" value="15" required />
+                <output id="launchAngleValueRight" for="launchAngleRight">15.0°</output>
+              </div>
+              <small>範囲: 8.0〜25.0°</small>
+            </div>
+
+            <div class="field">
+              <label for="windSpeedRight">風向風速（m/s）</label>
+              <div class="range-row">
+                <input id="windSpeedRight" name="windSpeed" type="range" min="-10" max="10" step="0.5" value="0" required />
+                <output id="windSpeedValueRight" for="windSpeedRight">0.0</output>
+              </div>
+              <small>範囲: -10.0（アゲインスト）〜 +10.0（フォロー）</small>
+            </div>
+
+            <div class="field">
+              <label for="spinRateRight">スピンレート（rpm）</label>
+              <div class="range-row">
+                <input id="spinRateRight" name="spinRate" type="range" min="1500" max="5000" step="50" value="2500" required />
+                <output id="spinRateValueRight" for="spinRateRight">2500</output>
+              </div>
+              <small>範囲: 1500〜5000 rpm</small>
+            </div>
+
+            <p id="error-message-right" class="error" aria-live="polite"></p>
+
+            <button type="submit">計算する</button>
+          </form>
+        </article>
       </section>
 
       <section class="card result-card">
         <h2>軌道計算</h2>
-        <ul class="result-list">
-          <li><span>最大到達点</span><strong id="maxHeightResult">-</strong></li>
-          <li><span>キャリー距離</span><strong id="carryResult">-</strong></li>
-          <li><span>トータル距離</span><strong id="totalResult">-</strong></li>
+        <ul class="result-list compare-list">
+          <li>
+            <span>最大到達点</span>
+            <div class="compare-values"><strong id="maxHeightResultLeft">左: -</strong><strong id="maxHeightResultRight">右: -</strong></div>
+          </li>
+          <li>
+            <span>キャリー距離</span>
+            <div class="compare-values"><strong id="carryResultLeft">左: -</strong><strong id="carryResultRight">右: -</strong></div>
+          </li>
+          <li>
+            <span>トータル距離</span>
+            <div class="compare-values"><strong id="totalResultLeft">左: -</strong><strong id="totalResultRight">右: -</strong></div>
+          </li>
         </ul>
 
         <div class="trajectory-panel">
