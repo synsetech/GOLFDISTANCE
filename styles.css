@@ -46,13 +46,14 @@ h1, h2 { margin: 0; }
 
 
 .page-tabs {
- display: flex;
- flex-wrap: wrap;
+ display: grid;
+ grid-template-columns: repeat(3, minmax(0, 1fr));
  gap: 8px;
 }
 
 .tab-link {
  display: inline-block;
+ text-align: center;
  padding: 8px 12px;
  border: 1px solid #c9d8ec;
  border-radius: 999px;
@@ -234,6 +235,7 @@ button.copy-btn:hover { opacity: 1; background: #e4efff; }
  .input-grid { grid-template-columns: 1fr; }
  .input-grid::after { display: none; }
  .compare-values { grid-template-columns: 1fr; gap: 2px; }
+ .page-tabs { grid-template-columns: 1fr; }
 }
 
 
