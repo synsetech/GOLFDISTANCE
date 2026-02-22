@@ -8,6 +8,8 @@ const AIR_KINEMATIC_VISCOSITY = 1.5e-5;
 const RUN_COEFFICIENT = 0.01;
 const METERS_PER_YARD = 0.9144;
 const EPSILON = 1e-6;
+const MAX_DISPLAY_YARDS = 380;
+const X_TICK_YARDS = 50;
 
 const form = document.getElementById("distance-form");
 const errorMessage = document.getElementById("error-message");
@@ -203,7 +205,7 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   }
 
   if (launchAngle < 10 || launchAngle > 18) {
-    return "ローンチアングルは 10.0〜18.0 度の範囲で入力してください。";
+    return "打ち出し角は 10.0〜18.0 度の範囲で入力してください。";
   }
 
   if (spinRate < 1500 || spinRate > 5000) {
@@ -217,14 +219,8 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   return null;
 }
 
-function drawSingleTrajectory(trajectory, maxHeightMeters, color, lineWidth, alpha) {
-  const pad = 36;
-  const groundY = canvas.height - pad;
-  const carryMeters = trajectory[trajectory.length - 1]?.x ?? 1;
-  const width = canvas.width - pad * 2;
-  const height = canvas.height - pad * 2;
-  const scaleX = width / Math.max(carryMeters, 1);
-  const scaleY = height / Math.max(maxHeightMeters * 1.35, 1);
+function drawSingleTrajectory(trajectory, color, lineWidth, alpha, scaleX, scaleY, pad, groundY, maxDisplayMeters) {
+  const maxXPixel = canvas.width - pad;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -232,14 +228,22 @@ function drawSingleTrajectory(trajectory, maxHeightMeters, color, lineWidth, alp
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
 
+  let started = false;
   let peakPoint = { x: pad, y: groundY };
+  let clippedAtEdge = false;
 
-  trajectory.forEach((point, index) => {
+  for (const point of trajectory) {
+    if (point.x > maxDisplayMeters) {
+      clippedAtEdge = true;
+      break;
+    }
+
     const px = pad + point.x * scaleX;
     const py = groundY - point.y * scaleY;
 
-    if (index === 0) {
+    if (!started) {
       ctx.moveTo(px, py);
+      started = true;
     } else {
       ctx.lineTo(px, py);
     }
@@ -247,21 +251,42 @@ function drawSingleTrajectory(trajectory, maxHeightMeters, color, lineWidth, alp
     if (py < peakPoint.y) {
       peakPoint = { x: px, y: py };
     }
-  });
+  }
+
+  if (clippedAtEdge && trajectory.length >= 2) {
+    const prev = trajectory.findLast((p) => p.x <= maxDisplayMeters);
+    const next = trajectory.find((p) => p.x > maxDisplayMeters);
+    if (prev && next) {
+      const t = (maxDisplayMeters - prev.x) / Math.max(next.x - prev.x, EPSILON);
+      const yAtEdge = prev.y + (next.y - prev.y) * t;
+      const pyEdge = groundY - yAtEdge * scaleY;
+      ctx.lineTo(maxXPixel, pyEdge);
+      if (pyEdge < peakPoint.y) peakPoint = { x: maxXPixel, y: pyEdge };
+    }
+  }
+
   ctx.stroke();
 
-  const landingX = pad + carryMeters * scaleX;
+  const carryMeters = trajectory[trajectory.length - 1]?.x ?? 0;
+  const overflow = carryMeters > maxDisplayMeters;
+  const landingX = overflow ? maxXPixel : pad + carryMeters * scaleX;
+
   ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(landingX, groundY, 4, 0, Math.PI * 2);
-  ctx.fill();
+  if (!overflow) {
+    ctx.beginPath();
+    ctx.arc(landingX, groundY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.font = "13px sans-serif";
+    ctx.fillText("→", maxXPixel + 4, groundY - 6);
+  }
 
   ctx.beginPath();
   ctx.arc(peakPoint.x, peakPoint.y, 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  return { landingX, peakPoint };
+  return { landingX, peakPoint, overflow };
 }
 
 function drawTrajectory(currentResult, previous) {
@@ -291,16 +316,40 @@ function drawTrajectory(currentResult, previous) {
   ctx.lineTo(canvas.width - pad, groundY);
   ctx.stroke();
 
-  if (previous) {
-    drawSingleTrajectory(previous.trajectory, previous.maxHeightMeters, "#8ea0b4", 2, 0.35);
+  const width = canvas.width - pad * 2;
+  const height = canvas.height - pad * 2;
+  const maxDisplayMeters = MAX_DISPLAY_YARDS * METERS_PER_YARD;
+  const scaleX = width / maxDisplayMeters;
+  const scaleY = height / Math.max(Math.max(currentResult.maxHeightMeters, previous?.maxHeightMeters || 0) * 1.35, 1);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1;
+  for (let yard = 50; yard <= MAX_DISPLAY_YARDS; yard += X_TICK_YARDS) {
+    const x = pad + yard * METERS_PER_YARD * scaleX;
+    ctx.beginPath();
+    ctx.moveTo(x, groundY);
+    ctx.lineTo(x, groundY - 8);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(230,240,255,0.8)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(`${yard}`, x - 10, groundY + 16);
   }
 
-  const currentMarks = drawSingleTrajectory(currentResult.trajectory, currentResult.maxHeightMeters, "#41a5ff", 3, 1);
+  if (previous) {
+    drawSingleTrajectory(previous.trajectory, "#8ea0b4", 2, 0.35, scaleX, scaleY, pad, groundY, maxDisplayMeters);
+  }
+
+  const currentMarks = drawSingleTrajectory(currentResult.trajectory, "#41a5ff", 3, 1, scaleX, scaleY, pad, groundY, maxDisplayMeters);
 
   ctx.fillStyle = "#f3f7ff";
   ctx.font = "14px sans-serif";
-  ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
+  if (!currentMarks.overflow) {
+    ctx.fillText("着弾点", currentMarks.landingX - 18, groundY - 10);
+  } else {
+    ctx.fillText("380yd+", currentMarks.landingX - 34, groundY - 10);
+  }
   ctx.fillText("最大到達点", currentMarks.peakPoint.x - 36, currentMarks.peakPoint.y - 12);
+  ctx.fillText("380 yd", canvas.width - pad - 36, groundY - 12);
 }
 
 [headSpeedInput, smashFactorInput, launchAngleInput, spinRateInput, windSpeedInput].forEach((input) => {
