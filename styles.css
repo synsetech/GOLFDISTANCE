@@ -177,3 +177,37 @@ button:hover {
     grid-column: 1 / -1;
   }
 }
+
+#windSpeed {
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+}
+
+#windSpeed::-webkit-slider-runnable-track {
+  height: 8px;
+  background: transparent;
+}
+
+#windSpeed::-moz-range-track {
+  height: 8px;
+  background: transparent;
+}
+
+#windSpeed::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2b78ff;
+}
+
+#windSpeed::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2b78ff;
+}

@@ -73,6 +73,23 @@ function spinFactorFrom(speed, spinRpm) {
   return (omega * BALL_RADIUS) / Math.max(speed, EPSILON);
 }
 
+function updateWindSliderIndicator() {
+  const min = Number(windSpeedInput.min);
+  const max = Number(windSpeedInput.max);
+  const val = Number(windSpeedInput.value);
+  const centerPct = ((0 - min) / (max - min)) * 100;
+  const valPct = ((val - min) / (max - min)) * 100;
+
+  if (Math.abs(val) < 1e-9) {
+    windSpeedInput.style.background = "linear-gradient(to right, #cfd8e3 0%, #cfd8e3 100%)";
+    return;
+  }
+
+  const left = Math.min(centerPct, valPct);
+  const right = Math.max(centerPct, valPct);
+  windSpeedInput.style.background = `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${left}%, #2b78ff ${left}%, #2b78ff ${right}%, #cfd8e3 ${right}%, #cfd8e3 100%)`;
+}
+
 function effectiveSpinRate(spinRate) {
   // 3000rpmまでは実入力を採用し、3000〜5000rpmは効果を緩やかに補間
   if (spinRate <= 3000) return spinRate;
@@ -91,6 +108,7 @@ function updateOutputs() {
   spinRateValue.textContent = Number(spinRateInput.value).toFixed(0);
   const wind = Number(windSpeedInput.value);
   windSpeedValue.textContent = wind.toFixed(1);
+  updateWindSliderIndicator();
   ballSpeedPreview.textContent = `${(headSpeed * smashFactor).toFixed(1)} m/s`;
 }
 
@@ -120,7 +138,8 @@ function simulateFlight(ballSpeed, launchAngleDeg, spinRate, windSpeed) {
 
   for (let i = 0; i < 3000; i += 1) {
     const previous = { ...state };
-    const relVx = state.vx - windSpeed;
+    // 対気速度 = ボール速度 + 風向成分（要件に合わせた符号定義）
+    const relVx = state.vx + windSpeed;
     const relVy = state.vy;
     const airSpeed = Math.max(Math.hypot(relVx, relVy), EPSILON);
     const re = (airSpeed * BALL_DIAMETER) / AIR_KINEMATIC_VISCOSITY;
