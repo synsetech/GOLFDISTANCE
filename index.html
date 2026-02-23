@@ -10,38 +10,14 @@
     <main class="container">
       <h1>ゴルフボール飛距離シミュレーター ドライバー&ウッド</h1>
       <p class="note">
-        ※ 本ツールは2次元モデルの簡易推定です。バックスピン・抗力係数・揚力係数は簡易化して扱い、風や地面状況などは反映していません。
+        ※ 本ツールは、ゴルフボールの空力モデルを使用した簡易的な飛距離・弾道計算ツールです。
       </p>
 
       <nav class="page-tabs" aria-label="ページ切り替え">
         <a class="tab-link active" href="index.html" aria-current="page">ドライバー&ウッド</a>
         <a class="tab-link" href="middle-iron.html">ミドルアイアン</a>
-        <a class="tab-link" href="tips.html">飛距離を伸ばすコツ</a>
         <a class="tab-link" href="pro.html">Pro版（有料版高精度準備中）</a>
       </nav>
-
-      <section class="card result-card">
-        <h2>軌道計算</h2>
-
-        <div class="trajectory-panel">
-          <canvas id="trajectoryCanvas" width="800" height="420" aria-label="側面からの2D弾道図"></canvas>
-        </div>
-
-        <ul class="result-list compare-list">
-          <li>
-            <span>最大到達点</span>
-            <div class="compare-values"><strong id="maxHeightResultLeft">A: -</strong><strong id="maxHeightResultRight">B: -</strong></div>
-          </li>
-          <li>
-            <span>キャリー距離</span>
-            <div class="compare-values"><strong id="carryResultLeft">A: -</strong><strong id="carryResultRight">B: -</strong></div>
-          </li>
-          <li>
-            <span>トータル距離</span>
-            <div class="compare-values"><strong id="totalResultLeft">A: -</strong><strong id="totalResultRight">B: -</strong></div>
-          </li>
-        </ul>
-      </section>
 
       <section class="input-grid" aria-label="A/B比較入力">
         <article class="card">
@@ -168,6 +144,29 @@
       <section class="card ad-space" aria-label="広告スペース">
         <h2>広告スペース</h2>
         <div class="ad-placeholder">Ad / Sponsored</div>
+      </section>
+
+      <section class="card result-card">
+        <h2>軌道計算</h2>
+
+        <div class="trajectory-panel">
+          <canvas id="trajectoryCanvas" width="800" height="420" aria-label="側面からの2D弾道図"></canvas>
+        </div>
+
+        <ul class="result-list compare-list">
+          <li>
+            <span>最大到達点</span>
+            <div class="compare-values"><strong id="maxHeightResultLeft">A: -</strong><strong id="maxHeightResultRight">B: -</strong></div>
+          </li>
+          <li>
+            <span>キャリー距離</span>
+            <div class="compare-values"><strong id="carryResultLeft">A: -</strong><strong id="carryResultRight">B: -</strong></div>
+          </li>
+          <li>
+            <span>トータル距離</span>
+            <div class="compare-values"><strong id="totalResultLeft">A: -</strong><strong id="totalResultRight">B: -</strong></div>
+          </li>
+        </ul>
       </section>
     </main>
 
