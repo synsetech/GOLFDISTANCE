@@ -55,17 +55,14 @@ function toPhysicsWind(rawWindValue) {
   return -rawWindValue;
 }
 
-function computeAutoFitSpanMeters(totalMetersList, maxHeightMetersList, mode = "driver") {
-  const maxTotalMeters = Math.max(...(totalMetersList || []).map((v) => v || 0), 0);
-  const maxHeightMeters = Math.max(...(maxHeightMetersList || []).map((v) => v || 0), 0);
+function computeMaxDisplayMeters(...totalMetersList) {
+  const maxTotalMeters = Math.max(...totalMetersList.map((v) => v || 0), 0);
+  const paddedMeters = maxTotalMeters + DISPLAY_PADDING_YARDS * METERS_PER_YARD;
+  return Math.max(paddedMeters, 150 * METERS_PER_YARD);
+}
 
-  let baseMeters = maxTotalMeters;
-  if (mode === "middle-iron" && maxHeightMeters > maxTotalMeters) {
-    baseMeters = maxHeightMeters;
-  }
-
-  const paddedMeters = baseMeters + DISPLAY_PADDING_YARDS * METERS_PER_YARD;
-  return Math.max(paddedMeters, 120 * METERS_PER_YARD);
+function getFixedMaxDisplayYMeters() {
+  return 100 * METERS_PER_YARD;
 }
 
 const hasDom = typeof document !== "undefined";
@@ -442,19 +439,10 @@ function drawTrajectory(left, right) {
   const width = plotRight - plotLeft;
   const height = plotBottom - plotTop;
 
-  const mode = document.body?.dataset?.mode === "middle-iron" ? "middle-iron" : "driver";
-  const autoFitSpanMeters = computeAutoFitSpanMeters(
-    [left?.totalMeters, right?.totalMeters],
-    [left?.maxHeightMeters, right?.maxHeightMeters],
-    mode
-  );
-
-  const uniformScale = Math.min(width, height) / Math.max(autoFitSpanMeters, EPSILON);
-  const scaleX = uniformScale;
-  const scaleY = uniformScale;
-
-  const maxDisplayMeters = width / Math.max(uniformScale, EPSILON);
-  const maxDisplayYMeters = height / Math.max(uniformScale, EPSILON);
+  const maxDisplayMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
+  const maxDisplayYMeters = getFixedMaxDisplayYMeters();
+  const scaleX = width / Math.max(maxDisplayMeters, EPSILON);
+  const scaleY = height / Math.max(maxDisplayYMeters, EPSILON);
 
   ctx.save();
   ctx.fillStyle = "#f5f7fb";
@@ -695,7 +683,8 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     computeWindDisplayValue,
     toPhysicsWind,
-    computeAutoFitSpanMeters,
+    computeMaxDisplayMeters,
+    getFixedMaxDisplayYMeters,
     calculateDistances,
     validateInputs,
     computeRunMetersFromLanding,
