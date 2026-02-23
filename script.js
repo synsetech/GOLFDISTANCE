@@ -83,16 +83,20 @@ function updateWindSliderIndicator(windSpeedInput) {
   const centerPct = ((0 - min) / (max - min)) * 100;
   const valPct = ((rawVal - min) / (max - min)) * 100;
 
+  const neutral = "#cfd8e3";
+  const tailwind = "#ff6c61";
+  const headwind = "#3f8fff";
+
   if (Math.abs(rawVal) < 1e-9) {
-    windSpeedInput.style.background = "linear-gradient(to right, #cfd8e3 0%, #cfd8e3 100%)";
+    windSpeedInput.style.background = `linear-gradient(to right, ${neutral} 0%, ${neutral} 100%)`;
     return;
   }
 
-  if (rawVal > 0) {
-    windSpeedInput.style.background = `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${centerPct}%, #ff8a80 ${centerPct}%, #ff5a4f ${valPct}%, #cfd8e3 ${valPct}%, #cfd8e3 100%)`;
-  } else {
-    windSpeedInput.style.background = `linear-gradient(to right, #cfd8e3 0%, #cfd8e3 ${valPct}%, #4f9dff ${valPct}%, #2b78ff ${centerPct}%, #cfd8e3 ${centerPct}%, #cfd8e3 100%)`;
-  }
+  const from = Math.min(centerPct, valPct);
+  const to = Math.max(centerPct, valPct);
+  const activeColor = rawVal > 0 ? tailwind : headwind;
+
+  windSpeedInput.style.background = `linear-gradient(to right, ${neutral} 0%, ${neutral} ${from}%, ${activeColor} ${from}%, ${activeColor} ${to}%, ${neutral} ${to}%, ${neutral} 100%)`;
 }
 
 function effectiveSpinRate(spinRate) {
