@@ -25,6 +25,28 @@ const GROUND = {
 const SPIN_DECAY_RATE = 0.04;
 const CD_SPIN_LINEAR = 0.35;
 
+function getSimulationConfig() {
+  const mode = typeof document !== "undefined" ? document.body?.dataset?.mode : null;
+  if (mode === "middle-iron") {
+    return {
+      headSpeed: { min: 15, max: 40 },
+      smashFactor: { min: 1.1, max: 1.3 },
+      launchAngle: { min: 10, max: 30 },
+      spinRate: { min: 1500, max: 10000 },
+      windSpeed: { min: -7, max: 7 },
+    };
+  }
+
+  return {
+    headSpeed: { min: 25, max: 60 },
+    smashFactor: { min: 1.3, max: 1.56 },
+    launchAngle: { min: 8, max: 25 },
+    spinRate: { min: 1500, max: 5000 },
+    windSpeed: { min: -7, max: 7 },
+  };
+}
+
+
 function computeWindDisplayValue(rawWindValue) {
   return -rawWindValue;
 }
@@ -68,7 +90,10 @@ function cdFromRe(re) {
 }
 
 function clFromSpinFactor(s) {
-  return Math.max(0, -3.25 * s * s + 1.99 * s);
+  const sClamped = Math.max(0, s);
+  const clMax = 1.35;
+  const liftBuildRate = 1.25;
+  return clMax * (1 - Math.exp(-liftBuildRate * sClamped));
 }
 
 function spinFactorFrom(speed, spinRpm) {
@@ -100,9 +125,7 @@ function updateWindSliderIndicator(windSpeedInput) {
 }
 
 function effectiveSpinRate(spinRate) {
-  if (spinRate <= 3000) return spinRate;
-  const t = (spinRate - 3000) / 2000;
-  return lerp(3000, 3800, t);
+  return Math.max(spinRate, 0);
 }
 
 function spinAtTimeRpm(spin0Rpm, tSec) {
@@ -111,20 +134,12 @@ function spinAtTimeRpm(spin0Rpm, tSec) {
 
 function computeRunMetersFromLanding(landingVx, _landingVyIgnored, _spinLandRpmIgnored) {
   if (!Number.isFinite(landingVx)) return 0;
-  if (landingVx <= 0) return 0;
 
-  const v0 = clamp(landingVx, 0, landingVx);
-  const a0 = 0.9;
-  const k = 0.18;
-
-  const kSafe = Math.max(k, EPSILON);
-  const a0Safe = Math.max(a0, EPSILON);
-  const kvOverA0 = (kSafe * v0) / a0Safe;
-
-  let run = (v0 / kSafe) - (a0Safe / (kSafe * kSafe)) * Math.log(1 + kvOverA0);
+  const RUN_VX2_COEFF = 0.3788590963203658;
+  let run = RUN_VX2_COEFF * landingVx * Math.abs(landingVx);
 
   const RUN_MAX_METERS = 120;
-  run = clamp(run, 0, RUN_MAX_METERS);
+  run = clamp(run, -RUN_MAX_METERS, RUN_MAX_METERS);
   return run;
 }
 
@@ -149,7 +164,12 @@ function computeRunWithBounceFromLanding(landingVx, landingVy, spinLandRpm) {
   const tanG = Math.tan(gamma);
   const landingAngleLoss = 1 / (1 + K_LANDING_ANGLE * tanG * tanG);
 
-  let vx = Math.max(landingVx * landingAngleLoss, 0);
+  let vx = landingVx * landingAngleLoss;
+
+  const omega = ((spinLandRpm || 0) * 2 * Math.PI) / 60;
+  const spinSurfaceSpeed = omega * BALL_RADIUS;
+  const SPIN_IMPACT_GAIN = 0.22;
+  vx -= SPIN_IMPACT_GAIN * spinSurfaceSpeed;
 
   const spinSign = Math.sign(spinLandRpm || 0);
   const spinAbs = Math.abs(spinLandRpm || 0);
@@ -168,10 +188,9 @@ function computeRunWithBounceFromLanding(landingVx, landingVy, spinLandRpm) {
     const eN = i === 0 ? eNFirst : eNAfter;
 
     vx *= (i === 0 ? eTFirstEff : eTAfter);
-    vx = Math.max(vx, 0);
 
     const vyUp = vyDown * eN;
-    if (vyUp < minBounceVy || vx <= 0) break;
+    if (vyUp < minBounceVy || Math.abs(vx) <= EPSILON) break;
 
     const tBounce = (2 * vyUp) / g;
     const sampleCount = clamp(Math.ceil(tBounce / 0.015), 4, 24);
@@ -183,7 +202,7 @@ function computeRunWithBounceFromLanding(landingVx, landingVy, spinLandRpm) {
       runPath.push({ x: px, y: py });
     }
 
-    x += Math.max(0, vx * tBounce);
+    x += vx * tBounce;
     vyDown = vyUp;
 
     const peakHeight = clamp((vyUp * vyUp) / (2 * g), 0, maxBounceHeightMeters);
@@ -319,11 +338,13 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
     return "0より大きい値を入力してください。";
   }
 
-  if (headSpeed < 25 || headSpeed > 60) return "ヘッドスピードは 25.0〜60.0 の範囲で入力してください。";
-  if (smashFactor < 1.3 || smashFactor > 1.56) return "ミート率は 1.30〜1.56 の範囲で入力してください。";
-  if (launchAngle < 8 || launchAngle > 25) return "打ち出し角は 8.0〜25.0 度の範囲で入力してください。";
-  if (spinRate < 1500 || spinRate > 5000) return "スピンレートは 1500〜5000 rpm の範囲で入力してください。";
-  if (windSpeed < -7 || windSpeed > 7) return "風向風速は -7.0〜+7.0 m/s の範囲で入力してください。";
+  const simConfig = getSimulationConfig();
+
+  if (headSpeed < simConfig.headSpeed.min || headSpeed > simConfig.headSpeed.max) return `ヘッドスピードは ${simConfig.headSpeed.min.toFixed(1)}〜${simConfig.headSpeed.max.toFixed(1)} の範囲で入力してください。`;
+  if (smashFactor < simConfig.smashFactor.min || smashFactor > simConfig.smashFactor.max) return `ミート率は ${simConfig.smashFactor.min.toFixed(2)}〜${simConfig.smashFactor.max.toFixed(2)} の範囲で入力してください。`;
+  if (launchAngle < simConfig.launchAngle.min || launchAngle > simConfig.launchAngle.max) return `打ち出し角は ${simConfig.launchAngle.min.toFixed(1)}〜${simConfig.launchAngle.max.toFixed(1)} 度の範囲で入力してください。`;
+  if (spinRate < simConfig.spinRate.min || spinRate > simConfig.spinRate.max) return `スピンレートは ${simConfig.spinRate.min}〜${simConfig.spinRate.max} rpm の範囲で入力してください。`;
+  if (windSpeed < simConfig.windSpeed.min || windSpeed > simConfig.windSpeed.max) return `風向風速は ${simConfig.windSpeed.min.toFixed(1)}〜+${simConfig.windSpeed.max.toFixed(1)} m/s の範囲で入力してください。`;
 
   return null;
 }
