@@ -536,8 +536,9 @@ function drawTrajectory(left, right) {
     ctx.fillText(label, x + 30, legendY);
   };
 
-  drawLegend("A", "rgba(20, 130, 245, 1)", plotLeft + 12);
-  drawLegend("B", "rgba(255, 118, 30, 1)", plotLeft + 74);
+  const legendBaseX = plotRight - 130;
+  drawLegend("A", "rgba(20, 130, 245, 1)", legendBaseX);
+  drawLegend("B", "rgba(255, 118, 30, 1)", legendBaseX + 62);
   ctx.restore();
 
   ctx.save();
