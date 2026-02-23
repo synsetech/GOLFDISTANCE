@@ -8,7 +8,9 @@
   </head>
   <body>
     <main class="container">
-      <h1>ゴルフボール飛距離シミュレーター ドライバー&ウッド</h1>
+      <header class="page-header">
+        <h1>ゴルフボール飛距離シミュレーター ドライバー&ウッド</h1>
+      </header>
       <p class="note">
         ※ 本ツールは、ゴルフボールの空力モデルを使用した簡易的な飛距離・弾道計算ツールです。
       </p>
@@ -26,9 +28,9 @@
           </div>
           <form id="distance-form-left" class="distance-form" novalidate>
             <div class="field">
-              <div class="field-head"><label for="headSpeedLeft">ヘッドスピード（m/s）</label><span class="range-note">25.0〜60.0</span></div>
+              <div class="field-head"><label for="headSpeedLeft">ヘッドスピード（m/s）</label><span class="range-note">30.0〜60.0</span></div>
               <div class="range-row">
-                <input id="headSpeedLeft" name="headSpeed" type="range" min="25" max="60" step="0.1" value="45" required />
+                <input id="headSpeedLeft" name="headSpeed" type="range" min="30" max="60" step="0.1" value="45" required />
                 <output id="headSpeedValueLeft" for="headSpeedLeft">45.0</output>
               </div>
             </div>
@@ -64,9 +66,9 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRateLeft">スピンレート（rpm）</label><span class="range-note">1500〜5000</span></div>
+              <div class="field-head"><label for="spinRateLeft">スピンレート（rpm）</label><span class="range-note">1500〜4000</span></div>
               <div class="range-row">
-                <input id="spinRateLeft" name="spinRate" type="range" min="1500" max="5000" step="50" value="2500" required />
+                <input id="spinRateLeft" name="spinRate" type="range" min="1500" max="4000" step="50" value="2500" required />
                 <output id="spinRateValueLeft" for="spinRateLeft">2500</output>
               </div>
             </div>
@@ -86,9 +88,9 @@
           </div>
           <form id="distance-form-right" class="distance-form" novalidate>
             <div class="field">
-              <div class="field-head"><label for="headSpeedRight">ヘッドスピード（m/s）</label><span class="range-note">25.0〜60.0</span></div>
+              <div class="field-head"><label for="headSpeedRight">ヘッドスピード（m/s）</label><span class="range-note">30.0〜60.0</span></div>
               <div class="range-row">
-                <input id="headSpeedRight" name="headSpeed" type="range" min="25" max="60" step="0.1" value="45" required />
+                <input id="headSpeedRight" name="headSpeed" type="range" min="30" max="60" step="0.1" value="45" required />
                 <output id="headSpeedValueRight" for="headSpeedRight">45.0</output>
               </div>
             </div>
@@ -124,9 +126,9 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRateRight">スピンレート（rpm）</label><span class="range-note">1500〜5000</span></div>
+              <div class="field-head"><label for="spinRateRight">スピンレート（rpm）</label><span class="range-note">1500〜4000</span></div>
               <div class="range-row">
-                <input id="spinRateRight" name="spinRate" type="range" min="1500" max="5000" step="50" value="2500" required />
+                <input id="spinRateRight" name="spinRate" type="range" min="1500" max="4000" step="50" value="2500" required />
                 <output id="spinRateValueRight" for="spinRateRight">2500</output>
               </div>
             </div>
@@ -172,11 +174,7 @@
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <small>© 2026 GolfDistance Inc.</small>
-        <nav aria-label="フッターナビゲーション">
-          <a href="#">自社サイト</a>
-          <a href="#">T&amp;C</a>
-        </nav>
+        <small>2026 AeroGolfSim.jp</small>
       </div>
     </footer>
 

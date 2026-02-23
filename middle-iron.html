@@ -8,7 +8,9 @@
   </head>
   <body data-mode="middle-iron">
     <main class="container">
-      <h1>ゴルフボール飛距離シミュレーター ミドルアイアン</h1>
+      <header class="page-header">
+        <h1>ゴルフボール飛距離シミュレーター ミドルアイアン</h1>
+      </header>
       <p class="note">
         ※ ミドルアイアン向け設定（ヘッドスピード15.0〜40.0m/s、ミート率1.10〜1.30、打ち出し角10.0〜30.0度、スピン最大10000rpm）で比較できます。
       </p>
@@ -64,9 +66,9 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRateLeft">スピンレート（rpm）</label><span class="range-note">1500〜10000</span></div>
+              <div class="field-head"><label for="spinRateLeft">スピンレート（rpm）</label><span class="range-note">4000〜10000</span></div>
               <div class="range-row">
-                <input id="spinRateLeft" name="spinRate" type="range" min="1500" max="10000" step="50" value="4500" required />
+                <input id="spinRateLeft" name="spinRate" type="range" min="4000" max="10000" step="50" value="4500" required />
                 <output id="spinRateValueLeft" for="spinRateLeft">4500</output>
               </div>
             </div>
@@ -124,9 +126,9 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRateRight">スピンレート（rpm）</label><span class="range-note">1500〜10000</span></div>
+              <div class="field-head"><label for="spinRateRight">スピンレート（rpm）</label><span class="range-note">4000〜10000</span></div>
               <div class="range-row">
-                <input id="spinRateRight" name="spinRate" type="range" min="1500" max="10000" step="50" value="4500" required />
+                <input id="spinRateRight" name="spinRate" type="range" min="4000" max="10000" step="50" value="4500" required />
                 <output id="spinRateValueRight" for="spinRateRight">4500</output>
               </div>
             </div>
@@ -172,11 +174,7 @@
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <small>© 2026 GolfDistance Inc.</small>
-        <nav aria-label="フッターナビゲーション">
-          <a href="#">自社サイト</a>
-          <a href="#">T&amp;C</a>
-        </nav>
+        <small>2026 AeroGolfSim.jp</small>
       </div>
     </footer>
 

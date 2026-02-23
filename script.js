@@ -32,16 +32,16 @@ function getSimulationConfig() {
       headSpeed: { min: 15, max: 40 },
       smashFactor: { min: 1.1, max: 1.3 },
       launchAngle: { min: 10, max: 30 },
-      spinRate: { min: 1500, max: 10000 },
+      spinRate: { min: 4000, max: 10000 },
       windSpeed: { min: -7, max: 7 },
     };
   }
 
   return {
-    headSpeed: { min: 25, max: 60 },
+    headSpeed: { min: 30, max: 60 },
     smashFactor: { min: 1.3, max: 1.56 },
     launchAngle: { min: 8, max: 25 },
-    spinRate: { min: 1500, max: 5000 },
+    spinRate: { min: 1500, max: 4000 },
     windSpeed: { min: -7, max: 7 },
   };
 }
@@ -59,6 +59,10 @@ function computeMaxDisplayMeters(...totalMetersList) {
   const maxTotalMeters = Math.max(...totalMetersList.map((v) => v || 0), 0);
   const paddedMeters = maxTotalMeters + DISPLAY_PADDING_YARDS * METERS_PER_YARD;
   return Math.max(paddedMeters, 150 * METERS_PER_YARD);
+}
+
+function getFixedMaxDisplayYMeters() {
+  return 100 * METERS_PER_YARD;
 }
 
 const hasDom = typeof document !== "undefined";
@@ -436,7 +440,7 @@ function drawTrajectory(left, right) {
   const height = plotBottom - plotTop;
 
   const maxDisplayMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
-  const maxDisplayYMeters = 100 * METERS_PER_YARD;
+  const maxDisplayYMeters = getFixedMaxDisplayYMeters();
   const scaleX = width / Math.max(maxDisplayMeters, EPSILON);
   const scaleY = height / Math.max(maxDisplayYMeters, EPSILON);
 
@@ -501,8 +505,28 @@ function drawTrajectory(left, right) {
     ctx.stroke();
     ctx.fillText(`${yd}`, plotLeft - 14, y + 4);
   }
-  ctx.fillText("X [yd]", plotRight - 42, canvas.height - 10);
-  ctx.fillText("Y [yd]", plotLeft + 4, plotTop + 14);
+  ctx.fillText("飛距離 [yd]", plotRight - 62, canvas.height - 10);
+  ctx.fillText("高さ [yd]", plotLeft + 4, plotTop + 14);
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.fillStyle = "#12161f";
+  const legendY = plotTop + 18;
+
+  const drawLegend = (label, color, x) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, legendY - 4);
+    ctx.lineTo(x + 24, legendY - 4);
+    ctx.stroke();
+    ctx.fillText(label, x + 30, legendY);
+  };
+
+  const legendBaseX = plotRight - 130;
+  drawLegend("A", "rgba(20, 130, 245, 1)", legendBaseX);
+  drawLegend("B", "rgba(255, 118, 30, 1)", legendBaseX + 62);
   ctx.restore();
 
   ctx.save();
@@ -660,6 +684,7 @@ if (typeof module !== "undefined" && module.exports) {
     computeWindDisplayValue,
     toPhysicsWind,
     computeMaxDisplayMeters,
+    getFixedMaxDisplayYMeters,
     calculateDistances,
     validateInputs,
     computeRunMetersFromLanding,
