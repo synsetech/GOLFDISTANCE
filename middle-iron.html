@@ -19,161 +19,90 @@
         <a class="tab-link" href="pro.html">Pro版 (3D・高精度)</a>
       </nav>
 
-
       <datalist id="ironLaunchAngleTicks">
-        <option value="16" label="7i"></option>
-        <option value="18" label="8i"></option>
-        <option value="21" label="9i"></option>
-        <option value="24" label="P"></option>
-        <option value="28" label="GW"></option>
-        <option value="34" label="SW"></option>
+        <option value="14" label="7i"></option>
+        <option value="16" label="8i"></option>
+        <option value="18" label="9i"></option>
+        <option value="20" label="P"></option>
+        <option value="24" label="GW"></option>
+        <option value="28" label="SW"></option>
       </datalist>
 
-      <section class="input-grid" aria-label="A/B比較入力">
+
+      <section class="input-grid single-input" aria-label="入力">
         <article class="card">
           <div class="card-head">
-            <h2>入力 A</h2>
+            <h2>入力</h2>
           </div>
-          <form id="distance-form-left" class="distance-form" novalidate>
+          <form id="distance-form" class="distance-form" novalidate>
             <div class="field">
-              <div class="field-head"><label for="headSpeedLeft">ヘッドスピード（m/s）</label><span class="range-note">15.0〜45.0</span></div>
+              <div class="field-head"><label for="headSpeed">ヘッドスピード（m/s）</label><span class="range-note">15.0〜45.0</span></div>
               <div class="range-row">
-                <input id="headSpeedLeft" name="headSpeed" type="range" min="15" max="45" step="0.1" value="30" required />
-                <output id="headSpeedValueLeft" for="headSpeedLeft">30.0</output>
+                <input id="headSpeed" name="headSpeed" type="range" min="15" max="45" step="0.1" value="30" required />
+                <output id="headSpeedValue" for="headSpeed">30.0</output>
               </div>
             </div>
 
             <div class="inline-metric" aria-live="polite">
               <span>ボール初速（ヘッドスピード × ミート率）</span>
-              <strong id="ballSpeedPreviewLeft">-</strong>
+              <strong id="ballSpeedPreview">-</strong>
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="smashFactorLeft">ミート率</label><span class="range-note">1.10〜1.50</span></div>
+              <div class="field-head"><label for="smashFactor">ミート率</label><span class="range-note">1.10〜1.50</span></div>
               <div class="range-row">
-                <input id="smashFactorLeft" name="smashFactor" type="range" min="1.1" max="1.5" step="0.01" value="1.20" required />
-                <output id="smashFactorValueLeft" for="smashFactorLeft">1.20</output>
+                <input id="smashFactor" name="smashFactor" type="range" min="1.1" max="1.5" step="0.01" value="1.20" required />
+                <output id="smashFactorValue" for="smashFactor">1.20</output>
               </div>
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="launchAngleLeft">打ち出し角（度）</label><span class="range-note">12.0〜40.0</span></div>
+              <div class="field-head"><label for="launchAngle">打ち出し角（度）</label></div>
               <div class="range-row">
                 <div class="range-input-stack">
-                  <input id="launchAngleLeft" name="launchAngle" type="range" min="12" max="40" step="0.1" value="20" list="ironLaunchAngleTicks" required />
+                  <input id="launchAngle" name="launchAngle" type="range" min="12" max="40" step="0.1" value="20" list="ironLaunchAngleTicks" required />
                   <div class="launch-angle-marks" aria-hidden="true">
-                    <span style="--pos:14.3%">7i</span>
-                    <span style="--pos:21.4%">8i</span>
-                    <span style="--pos:32.1%">9i</span>
-                    <span style="--pos:42.9%">P</span>
-                    <span style="--pos:57.1%">GW</span>
-                    <span style="--pos:78.6%">SW</span>
+                    <span style="--pos:7.1%">7i</span>
+                    <span style="--pos:14.3%">8i</span>
+                    <span style="--pos:21.4%">9i</span>
+                    <span style="--pos:28.6%">P</span>
+                    <span style="--pos:42.9%">GW</span>
+                    <span style="--pos:57.1%">SW</span>
                   </div>
                 </div>
-                <output id="launchAngleValueLeft" for="launchAngleLeft">20.0°</output>
+                <output id="launchAngleValue" for="launchAngle">20.0°</output>
               </div>
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="windSpeedLeft">風向風速（m/s）</label><span class="range-note">-7.0〜+7.0</span></div>
+              <div class="field-head"><label for="windSpeed">風向風速（m/s）</label><span class="range-note">-7.0〜+7.0</span></div>
               <div class="range-row">
-                <input id="windSpeedLeft" name="windSpeed" type="range" min="-7" max="7" step="0.5" value="0" required />
-                <output id="windSpeedValueLeft" for="windSpeedLeft">0.0</output>
+                <input id="windSpeed" name="windSpeed" type="range" min="-7" max="7" step="0.5" value="0" required />
+                <output id="windSpeedValue" for="windSpeed">0.0</output>
               </div>
               <div class="wind-help">-7.0（アゲインスト）〜 +7.0（フォロー）※中央0</div>
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRateLeft">スピンレート（rpm）</label><span class="range-note">3000〜10000</span></div>
+              <div class="field-head"><label for="spinRate">スピンレート（rpm）</label><span class="range-note">3000〜10000</span></div>
               <div class="range-row">
-                <input id="spinRateLeft" name="spinRate" type="range" min="3000" max="10000" step="50" value="5000" required />
-                <output id="spinRateValueLeft" for="spinRateLeft">5000</output>
+                <input id="spinRate" name="spinRate" type="range" min="3000" max="10000" step="50" value="5000" required />
+                <output id="spinRateValue" for="spinRate">5000</output>
               </div>
             </div>
 
-            <p id="error-message-left" class="error" aria-live="polite"></p>
+            <p id="error-message" class="error" aria-live="polite"></p>
 
             <div class="action-row">
               <button type="submit">計算する</button>
-              <button type="button" class="copy-btn" id="copy-a-to-b" aria-label="Aの入力をBへコピー">A→B</button>
-            </div>
-          </form>
-        </article>
-
-        <article class="card">
-          <div class="card-head">
-            <h2>入力 B</h2>
-          </div>
-          <form id="distance-form-right" class="distance-form" novalidate>
-            <div class="field">
-              <div class="field-head"><label for="headSpeedRight">ヘッドスピード（m/s）</label><span class="range-note">15.0〜45.0</span></div>
-              <div class="range-row">
-                <input id="headSpeedRight" name="headSpeed" type="range" min="15" max="45" step="0.1" value="30" required />
-                <output id="headSpeedValueRight" for="headSpeedRight">30.0</output>
-              </div>
-            </div>
-
-            <div class="inline-metric" aria-live="polite">
-              <span>ボール初速（ヘッドスピード × ミート率）</span>
-              <strong id="ballSpeedPreviewRight">-</strong>
-            </div>
-
-            <div class="field">
-              <div class="field-head"><label for="smashFactorRight">ミート率</label><span class="range-note">1.10〜1.50</span></div>
-              <div class="range-row">
-                <input id="smashFactorRight" name="smashFactor" type="range" min="1.1" max="1.5" step="0.01" value="1.20" required />
-                <output id="smashFactorValueRight" for="smashFactorRight">1.20</output>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="field-head"><label for="launchAngleRight">打ち出し角（度）</label><span class="range-note">12.0〜40.0</span></div>
-              <div class="range-row">
-                <div class="range-input-stack">
-                  <input id="launchAngleRight" name="launchAngle" type="range" min="12" max="40" step="0.1" value="20" list="ironLaunchAngleTicks" required />
-                  <div class="launch-angle-marks" aria-hidden="true">
-                    <span style="--pos:14.3%">7i</span>
-                    <span style="--pos:21.4%">8i</span>
-                    <span style="--pos:32.1%">9i</span>
-                    <span style="--pos:42.9%">P</span>
-                    <span style="--pos:57.1%">GW</span>
-                    <span style="--pos:78.6%">SW</span>
-                  </div>
-                </div>
-                <output id="launchAngleValueRight" for="launchAngleRight">20.0°</output>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="field-head"><label for="windSpeedRight">風向風速（m/s）</label><span class="range-note">-7.0〜+7.0</span></div>
-              <div class="range-row">
-                <input id="windSpeedRight" name="windSpeed" type="range" min="-7" max="7" step="0.5" value="0" required />
-                <output id="windSpeedValueRight" for="windSpeedRight">0.0</output>
-              </div>
-              <div class="wind-help">-7.0（アゲインスト）〜 +7.0（フォロー）※中央0</div>
-            </div>
-
-            <div class="field">
-              <div class="field-head"><label for="spinRateRight">スピンレート（rpm）</label><span class="range-note">3000〜10000</span></div>
-              <div class="range-row">
-                <input id="spinRateRight" name="spinRate" type="range" min="3000" max="10000" step="50" value="5000" required />
-                <output id="spinRateValueRight" for="spinRateRight">5000</output>
-              </div>
-            </div>
-
-            <p id="error-message-right" class="error" aria-live="polite"></p>
-
-            <div class="action-row">
-              <button type="submit">計算する</button>
-              <button type="button" class="copy-btn" id="copy-b-to-a" aria-label="Bの入力をAへコピー">B→A</button>
+              <button type="button" id="reset-form" class="secondary-btn">リセット</button>
             </div>
           </form>
         </article>
       </section>
 
       <section class="card ad-space" aria-label="広告スペース">
-        <h2>広告スペース</h2>
-        <div class="ad-placeholder">Ad / Sponsored</div>
+        <div class="ad-placeholder" aria-label="広告スペース"></div>
       </section>
 
       <section class="card result-card">
@@ -186,15 +115,15 @@
         <ul class="result-list compare-list">
           <li>
             <span>最大到達点</span>
-            <div class="compare-values"><strong id="maxHeightResultLeft">A: -</strong><strong id="maxHeightResultRight">B: -</strong></div>
+            <div class="compare-values"><strong id="maxHeightResultPrevious">一つ前: -</strong><strong id="maxHeightResultCurrent">現在: -</strong></div>
           </li>
           <li>
             <span>キャリー距離</span>
-            <div class="compare-values"><strong id="carryResultLeft">A: -</strong><strong id="carryResultRight">B: -</strong></div>
+            <div class="compare-values"><strong id="carryResultPrevious">一つ前: -</strong><strong id="carryResultCurrent">現在: -</strong></div>
           </li>
           <li>
             <span>トータル距離</span>
-            <div class="compare-values"><strong id="totalResultLeft">A: -</strong><strong id="totalResultRight">B: -</strong></div>
+            <div class="compare-values"><strong id="totalResultPrevious">一つ前: -</strong><strong id="totalResultCurrent">現在: -</strong></div>
           </li>
         </ul>
       </section>
@@ -202,11 +131,7 @@
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <small>© 2026 GolfDistance Inc.</small>
-        <nav aria-label="フッターナビゲーション">
-          <a href="#">自社サイト</a>
-          <a href="#">T&amp;C</a>
-        </nav>
+        <small>© 2026 GolfDistance.jp</small>
       </div>
     </footer>
 

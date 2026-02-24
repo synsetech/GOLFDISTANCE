@@ -143,6 +143,14 @@ canvas { display: block; width: 100%; height: auto; }
  transform: translateX(-6px);
 }
 
+.input-grid.single-input {
+ grid-template-columns: 1fr;
+}
+
+.input-grid.single-input::after {
+ display: none;
+}
+
 .card-head {
  display: flex;
  align-items: center;
@@ -270,6 +278,17 @@ button {
 }
 
 button:hover { opacity: 0.94; }
+
+button.secondary-btn {
+ border: 1px solid #b8c8df;
+ background: #eef4ff;
+ color: #214f93;
+ font-size: 12px;
+ padding: 8px 10px;
+ white-space: nowrap;
+}
+
+button.secondary-btn:hover { opacity: 1; background: #e4efff; }
 
 button.copy-btn {
  border: 1px solid #b8c8df;
