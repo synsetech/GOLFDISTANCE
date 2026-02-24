@@ -88,8 +88,8 @@ const hasDom = typeof document !== "undefined";
 const canvas = hasDom ? document.getElementById("trajectoryCanvas") : null;
 const ctx = canvas ? canvas.getContext("2d") : null;
 
-let leftResult = null;
-let rightResult = null;
+let previousResult = null;
+let currentResult = null;
 
 function clamp(x, minVal, maxVal) {
   return Math.max(minVal, Math.min(maxVal, x));
@@ -443,12 +443,12 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
   ctx.restore();
 }
 
-function drawTrajectory(left, right) {
+function drawTrajectory(previous, current) {
   if (!ctx || !canvas) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!left && !right) return;
+  if (!previous && !current) return;
 
   const margin = { left: 18, right: 18, top: 12, bottom: 36 };
   const plotLeft = margin.left;
@@ -458,7 +458,7 @@ function drawTrajectory(left, right) {
   const width = plotRight - plotLeft;
   const height = plotBottom - plotTop;
 
-  const maxHorizontalMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
+  const maxHorizontalMeters = computeMaxDisplayMeters(previous?.totalMeters, current?.totalMeters);
   const maxDisplayYMeters = computeMaxDisplayYMeters(maxHorizontalMeters, width, height);
 
   // 1yd : 1yd を保つために、Y軸レンジからX軸レンジを逆算する。
@@ -548,9 +548,9 @@ function drawTrajectory(left, right) {
     ctx.fillText(label, x + 30, legendY);
   };
 
-  const legendBaseX = plotRight - 130;
-  drawLegend("A", "rgba(20, 130, 245, 1)", legendBaseX);
-  drawLegend("B", "rgba(255, 118, 30, 1)", legendBaseX + 62);
+  const legendBaseX = plotRight - 180;
+  drawLegend("一つ前(ゴースト)", "rgba(20, 130, 245, 1)", legendBaseX);
+  drawLegend("現在", "rgba(255, 118, 30, 1)", legendBaseX + 112);
   ctx.restore();
 
   ctx.save();
@@ -562,52 +562,36 @@ function drawTrajectory(left, right) {
   ctx.stroke();
   ctx.restore();
 
-  drawSingleTrajectory(left, "rgba(20, 130, 245, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
-  drawSingleTrajectory(right, "rgba(255, 118, 30, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
+  drawSingleTrajectory(previous, "rgba(20, 130, 245, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
+  drawSingleTrajectory(current, "rgba(255, 118, 30, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
 }
 
-
-function copySideInputs(fromPrefix, toPrefix) {
+function createSingleForm() {
   if (!hasDom) return;
 
-  const sideSuffix = { left: "Left", right: "Right" };
-  const from = sideSuffix[fromPrefix];
-  const to = sideSuffix[toPrefix];
-  if (!from || !to) return;
-
-  const fieldNames = ["headSpeed", "smashFactor", "launchAngle", "spinRate", "windSpeed"];
-  fieldNames.forEach((name) => {
-    const fromInput = document.getElementById(`${name}${from}`);
-    const toInput = document.getElementById(`${name}${to}`);
-    if (!fromInput || !toInput) return;
-
-    toInput.value = fromInput.value;
-    toInput.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
-
-function createSide(prefix, sideResultSetter) {
-  if (!hasDom) return;
-
-  const form = document.getElementById(`distance-form-${prefix}`);
+  const form = document.getElementById("distance-form");
   if (!form) return;
 
   const refs = {
-    error: document.getElementById(`error-message-${prefix}`),
-    headSpeedInput: document.getElementById(`headSpeed${prefix === "left" ? "Left" : "Right"}`),
-    smashFactorInput: document.getElementById(`smashFactor${prefix === "left" ? "Left" : "Right"}`),
-    launchAngleInput: document.getElementById(`launchAngle${prefix === "left" ? "Left" : "Right"}`),
-    spinRateInput: document.getElementById(`spinRate${prefix === "left" ? "Left" : "Right"}`),
-    windSpeedInput: document.getElementById(`windSpeed${prefix === "left" ? "Left" : "Right"}`),
-    headSpeedValue: document.getElementById(`headSpeedValue${prefix === "left" ? "Left" : "Right"}`),
-    smashFactorValue: document.getElementById(`smashFactorValue${prefix === "left" ? "Left" : "Right"}`),
-    launchAngleValue: document.getElementById(`launchAngleValue${prefix === "left" ? "Left" : "Right"}`),
-    spinRateValue: document.getElementById(`spinRateValue${prefix === "left" ? "Left" : "Right"}`),
-    windSpeedValue: document.getElementById(`windSpeedValue${prefix === "left" ? "Left" : "Right"}`),
-    ballSpeedPreview: document.getElementById(`ballSpeedPreview${prefix === "left" ? "Left" : "Right"}`),
-    maxHeightResult: document.getElementById(`maxHeightResult${prefix === "left" ? "Left" : "Right"}`),
-    carryResult: document.getElementById(`carryResult${prefix === "left" ? "Left" : "Right"}`),
-    totalResult: document.getElementById(`totalResult${prefix === "left" ? "Left" : "Right"}`),
+    error: document.getElementById("error-message"),
+    headSpeedInput: document.getElementById("headSpeed"),
+    smashFactorInput: document.getElementById("smashFactor"),
+    launchAngleInput: document.getElementById("launchAngle"),
+    spinRateInput: document.getElementById("spinRate"),
+    windSpeedInput: document.getElementById("windSpeed"),
+    headSpeedValue: document.getElementById("headSpeedValue"),
+    smashFactorValue: document.getElementById("smashFactorValue"),
+    launchAngleValue: document.getElementById("launchAngleValue"),
+    spinRateValue: document.getElementById("spinRateValue"),
+    windSpeedValue: document.getElementById("windSpeedValue"),
+    ballSpeedPreview: document.getElementById("ballSpeedPreview"),
+    maxHeightResultPrevious: document.getElementById("maxHeightResultPrevious"),
+    maxHeightResultCurrent: document.getElementById("maxHeightResultCurrent"),
+    carryResultPrevious: document.getElementById("carryResultPrevious"),
+    carryResultCurrent: document.getElementById("carryResultCurrent"),
+    totalResultPrevious: document.getElementById("totalResultPrevious"),
+    totalResultCurrent: document.getElementById("totalResultCurrent"),
+    resetButton: document.getElementById("reset-form"),
   };
 
   const inputs = [refs.headSpeedInput, refs.smashFactorInput, refs.launchAngleInput, refs.spinRateInput, refs.windSpeedInput];
@@ -652,12 +636,11 @@ function createSide(prefix, sideResultSetter) {
 
     if (error) {
       showError(error);
-      const sideLabel = prefix === "left" ? "A" : "B";
-      refs.maxHeightResult.textContent = `${sideLabel}: -`;
-      refs.carryResult.textContent = `${sideLabel}: -`;
-      refs.totalResult.textContent = `${sideLabel}: -`;
-      sideResultSetter(null);
-      drawTrajectory(leftResult, rightResult);
+      refs.maxHeightResultCurrent.textContent = "現在: -";
+      refs.carryResultCurrent.textContent = "現在: -";
+      refs.totalResultCurrent.textContent = "現在: -";
+      currentResult = null;
+      drawTrajectory(previousResult, currentResult);
       return;
     }
 
@@ -671,36 +654,49 @@ function createSide(prefix, sideResultSetter) {
       toPhysicsWind(Number(refs.windSpeedInput.value))
     );
 
-    const sideLabel = prefix === "left" ? "A" : "B";
-    refs.maxHeightResult.textContent = `${sideLabel}: ${result.maxHeightMeters.toFixed(1)} m`;
-    refs.carryResult.textContent = `${sideLabel}: ${(result.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
-    refs.totalResult.textContent = `${sideLabel}: ${(result.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
+    previousResult = currentResult;
+    currentResult = result;
 
-    sideResultSetter(result);
-    drawTrajectory(leftResult, rightResult);
+    refs.maxHeightResultCurrent.textContent = `現在: ${result.maxHeightMeters.toFixed(1)} m`;
+    refs.carryResultCurrent.textContent = `現在: ${(result.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
+    refs.totalResultCurrent.textContent = `現在: ${(result.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
+
+    if (previousResult) {
+      refs.maxHeightResultPrevious.textContent = `一つ前: ${previousResult.maxHeightMeters.toFixed(1)} m`;
+      refs.carryResultPrevious.textContent = `一つ前: ${(previousResult.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
+      refs.totalResultPrevious.textContent = `一つ前: ${(previousResult.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
+    } else {
+      refs.maxHeightResultPrevious.textContent = "一つ前: -";
+      refs.carryResultPrevious.textContent = "一つ前: -";
+      refs.totalResultPrevious.textContent = "一つ前: -";
+    }
+
+    drawTrajectory(previousResult, currentResult);
   });
+
+  if (refs.resetButton) {
+    refs.resetButton.addEventListener("click", () => {
+      form.reset();
+      previousResult = null;
+      currentResult = null;
+      clearError();
+      refs.maxHeightResultPrevious.textContent = "一つ前: -";
+      refs.maxHeightResultCurrent.textContent = "現在: -";
+      refs.carryResultPrevious.textContent = "一つ前: -";
+      refs.carryResultCurrent.textContent = "現在: -";
+      refs.totalResultPrevious.textContent = "一つ前: -";
+      refs.totalResultCurrent.textContent = "現在: -";
+      updateOutputs();
+      drawTrajectory(previousResult, currentResult);
+    });
+  }
 
   updateOutputs();
 }
 
 if (hasDom) {
-  const copyAToBButton = document.getElementById("copy-a-to-b");
-  const copyBToAButton = document.getElementById("copy-b-to-a");
-
-  if (copyAToBButton) {
-    copyAToBButton.addEventListener("click", () => copySideInputs("left", "right"));
-  }
-  if (copyBToAButton) {
-    copyBToAButton.addEventListener("click", () => copySideInputs("right", "left"));
-  }
-
-  createSide("left", (result) => {
-    leftResult = result;
-  });
-  createSide("right", (result) => {
-    rightResult = result;
-  });
-  drawTrajectory(leftResult, rightResult);
+  createSingleForm();
+  drawTrajectory(previousResult, currentResult);
 }
 
 if (typeof module !== "undefined" && module.exports) {
