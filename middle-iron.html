@@ -3,21 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ゴルフボール飛距離シミュレーター ドライバー&ウッド</title>
+    <title>ゴルフボール飛距離シミュレーター ミドルアイアン</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-mode="middle-iron">
     <main class="container">
-      <h1>ゴルフボール飛距離シミュレーター ドライバー&ウッド</h1>
+      <h1>ゴルフボール飛距離シミュレーター ミドルアイアン</h1>
       <p class="note">
-        ※ 本ツールは、ゴルフボールの空力モデルを使用した簡易的な飛距離・弾道計算ツールです。
+        ※ ミドルアイアン〜ウェッジ向け設定（ヘッドスピード15.0〜45.0m/s、ミート率1.10〜1.50、打ち出し角12.0〜40.0度、スピン3000〜10000rpm）で比較できます。
       </p>
 
       <nav class="page-tabs" aria-label="ページ切り替え">
-        <a class="tab-link active" href="index.html" aria-current="page">ドライバー&ウッド</a>
-        <a class="tab-link" href="middle-iron.html">ミドルアイアン</a>
+        <a class="tab-link" href="index.html">ドライバー&ウッド</a>
+        <a class="tab-link active" href="middle-iron.html" aria-current="page">ミドルアイアン</a>
         <a class="tab-link" href="pro.html">Pro版 (3D・高精度)</a>
       </nav>
+
+      <datalist id="ironLaunchAngleTicks">
+        <option value="14" label="7i"></option>
+        <option value="16" label="8i"></option>
+        <option value="18" label="9i"></option>
+        <option value="20" label="P"></option>
+        <option value="24" label="GW"></option>
+        <option value="28" label="SW"></option>
+      </datalist>
+
 
       <section class="input-grid single-input" aria-label="入力">
         <article class="card">
@@ -26,10 +36,10 @@
           </div>
           <form id="distance-form" class="distance-form" novalidate>
             <div class="field">
-              <div class="field-head"><label for="headSpeed">ヘッドスピード（m/s）</label><span class="range-note">30.0〜60.0</span></div>
+              <div class="field-head"><label for="headSpeed">ヘッドスピード（m/s）</label><span class="range-note">15.0〜45.0</span></div>
               <div class="range-row">
-                <input id="headSpeed" name="headSpeed" type="range" min="30" max="60" step="0.1" value="45" required />
-                <output id="headSpeedValue" for="headSpeed">45.0</output>
+                <input id="headSpeed" name="headSpeed" type="range" min="15" max="45" step="0.1" value="30" required />
+                <output id="headSpeedValue" for="headSpeed">30.0</output>
               </div>
             </div>
 
@@ -39,18 +49,28 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="smashFactor">ミート率</label><span class="range-note">1.30〜1.56</span></div>
+              <div class="field-head"><label for="smashFactor">ミート率</label><span class="range-note">1.10〜1.50</span></div>
               <div class="range-row">
-                <input id="smashFactor" name="smashFactor" type="range" min="1.3" max="1.56" step="0.01" value="1.45" required />
-                <output id="smashFactorValue" for="smashFactor">1.45</output>
+                <input id="smashFactor" name="smashFactor" type="range" min="1.1" max="1.5" step="0.01" value="1.20" required />
+                <output id="smashFactorValue" for="smashFactor">1.20</output>
               </div>
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="launchAngle">打ち出し角（度）</label><span class="range-note">8.0〜25.0</span></div>
+              <div class="field-head"><label for="launchAngle">打ち出し角（度）</label></div>
               <div class="range-row">
-                <input id="launchAngle" name="launchAngle" type="range" min="8" max="25" step="0.1" value="15" required />
-                <output id="launchAngleValue" for="launchAngle">15.0°</output>
+                <div class="range-input-stack">
+                  <input id="launchAngle" name="launchAngle" type="range" min="12" max="40" step="0.1" value="20" list="ironLaunchAngleTicks" required />
+                  <div class="launch-angle-marks" aria-hidden="true">
+                    <span style="--pos:7.1%">7i</span>
+                    <span style="--pos:14.3%">8i</span>
+                    <span style="--pos:21.4%">9i</span>
+                    <span style="--pos:28.6%">P</span>
+                    <span style="--pos:42.9%">GW</span>
+                    <span style="--pos:57.1%">SW</span>
+                  </div>
+                </div>
+                <output id="launchAngleValue" for="launchAngle">20.0°</output>
               </div>
             </div>
 
@@ -64,10 +84,10 @@
             </div>
 
             <div class="field">
-              <div class="field-head"><label for="spinRate">スピンレート（rpm）</label><span class="range-note">1500〜4000</span></div>
+              <div class="field-head"><label for="spinRate">スピンレート（rpm）</label><span class="range-note">3000〜10000</span></div>
               <div class="range-row">
-                <input id="spinRate" name="spinRate" type="range" min="1500" max="4000" step="50" value="2500" required />
-                <output id="spinRateValue" for="spinRate">2500</output>
+                <input id="spinRate" name="spinRate" type="range" min="3000" max="10000" step="50" value="5000" required />
+                <output id="spinRateValue" for="spinRate">5000</output>
               </div>
             </div>
 
