@@ -379,6 +379,7 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
   const runLineWidth = style.runLineWidth ?? 2;
   const dash = style.dash ?? [];
   const showPeakLabel = style.showPeakLabel ?? true;
+  const markerColor = style.markerColor ?? "#d11a2a";
 
   ctx.save();
   ctx.strokeStyle = color;
@@ -428,7 +429,6 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
   const landingX = plotLeft + Math.min(result.carryMeters, maxDisplayMeters) * scaleX;
   const totalX = plotLeft + Math.min(result.totalMeters, maxDisplayMeters) * scaleX;
 
-  const markerColor = "#d11a2a";
   ctx.fillStyle = markerColor;
   ctx.beginPath();
   ctx.arc(peakPoint.x, peakPoint.y, 4.5, 0, Math.PI * 2);
@@ -572,7 +572,7 @@ function drawTrajectory(previous, current) {
   ctx.stroke();
   ctx.restore();
 
-  drawSingleTrajectory(previous, "rgba(95, 147, 196, 0.45)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters, { lineWidth: 2, runLineWidth: 1.5, dash: [8, 6], showPeakLabel: false });
+  drawSingleTrajectory(previous, "rgba(95, 147, 196, 0.45)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters, { lineWidth: 2, runLineWidth: 1.5, dash: [8, 6], showPeakLabel: false, markerColor: "#7b4bff" });
   drawSingleTrajectory(current, "rgba(255, 118, 30, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
 }
 
