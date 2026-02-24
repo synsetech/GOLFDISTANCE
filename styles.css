@@ -200,6 +200,45 @@ output {
  line-height: 1.3;
 }
 
+.range-input-stack {
+ position: relative;
+ padding-bottom: 20px;
+}
+
+.range-input-stack input[type="range"] {
+ display: block;
+ width: 100%;
+}
+
+.launch-angle-marks {
+ position: absolute;
+ left: 0;
+ right: 0;
+ bottom: 0;
+ height: 16px;
+ font-size: 0.72rem;
+ color: #5b7089;
+}
+
+.launch-angle-marks span {
+ position: absolute;
+ left: var(--pos);
+ transform: translateX(-50%);
+ white-space: nowrap;
+ line-height: 1;
+}
+
+.launch-angle-marks span::before {
+ content: "";
+ position: absolute;
+ left: 50%;
+ transform: translateX(-50%);
+ top: -9px;
+ width: 1px;
+ height: 6px;
+ background: #9fb0c4;
+}
+
 .error {
  display: none;
  margin: 0;

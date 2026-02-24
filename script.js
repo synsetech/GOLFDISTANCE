@@ -29,10 +29,10 @@ function getSimulationConfig() {
   const mode = typeof document !== "undefined" ? document.body?.dataset?.mode : null;
   if (mode === "middle-iron") {
     return {
-      headSpeed: { min: 15, max: 40 },
-      smashFactor: { min: 1.1, max: 1.3 },
-      launchAngle: { min: 10, max: 30 },
-      spinRate: { min: 4000, max: 10000 },
+      headSpeed: { min: 15, max: 45 },
+      smashFactor: { min: 1.1, max: 1.5 },
+      launchAngle: { min: 12, max: 40 },
+      spinRate: { min: 3000, max: 10000 },
       windSpeed: { min: -7, max: 7 },
     };
   }
@@ -55,14 +55,33 @@ function toPhysicsWind(rawWindValue) {
   return -rawWindValue;
 }
 
+function getDisplayConfig() {
+  const mode = typeof document !== "undefined" ? document.body?.dataset?.mode : null;
+  if (mode === "middle-iron") {
+    return {
+      minDisplayXards: 15,
+      maxDisplayYards: 100,
+    };
+  }
+
+  return {
+    minDisplayXards: 30,
+    maxDisplayYards: 100,
+  };
+}
+
 function computeMaxDisplayMeters(...totalMetersList) {
   const maxTotalMeters = Math.max(...totalMetersList.map((v) => v || 0), 0);
   const paddedMeters = maxTotalMeters + DISPLAY_PADDING_YARDS * METERS_PER_YARD;
-  return Math.max(paddedMeters, 150 * METERS_PER_YARD);
+  const displayConfig = getDisplayConfig();
+  return Math.max(paddedMeters, displayConfig.minDisplayXards * METERS_PER_YARD);
 }
 
-function getFixedMaxDisplayYMeters() {
-  return 100 * METERS_PER_YARD;
+function computeMaxDisplayYMeters(maxDisplayMeters, plotWidthPx, plotHeightPx) {
+  const aspect = plotHeightPx / Math.max(plotWidthPx, EPSILON);
+  const aspectLockedYMeters = maxDisplayMeters * aspect;
+  const displayConfig = getDisplayConfig();
+  return Math.min(aspectLockedYMeters, displayConfig.maxDisplayYards * METERS_PER_YARD);
 }
 
 const hasDom = typeof document !== "undefined";
@@ -439,10 +458,15 @@ function drawTrajectory(left, right) {
   const width = plotRight - plotLeft;
   const height = plotBottom - plotTop;
 
-  const maxDisplayMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
-  const maxDisplayYMeters = getFixedMaxDisplayYMeters();
-  const scaleX = width / Math.max(maxDisplayMeters, EPSILON);
-  const scaleY = height / Math.max(maxDisplayYMeters, EPSILON);
+  const maxHorizontalMeters = computeMaxDisplayMeters(left?.totalMeters, right?.totalMeters);
+  const maxDisplayYMeters = computeMaxDisplayYMeters(maxHorizontalMeters, width, height);
+
+  // 1yd : 1yd を保つために、Y軸レンジからX軸レンジを逆算する。
+  const aspectBasedHorizontalMeters = (maxDisplayYMeters * width) / Math.max(height, EPSILON);
+  const maxDisplayMeters = Math.max(maxHorizontalMeters, aspectBasedHorizontalMeters);
+  const scale = width / Math.max(maxDisplayMeters, EPSILON);
+  const scaleX = scale;
+  const scaleY = scale;
 
   ctx.save();
   ctx.fillStyle = "#f5f7fb";
@@ -684,7 +708,7 @@ if (typeof module !== "undefined" && module.exports) {
     computeWindDisplayValue,
     toPhysicsWind,
     computeMaxDisplayMeters,
-    getFixedMaxDisplayYMeters,
+    computeMaxDisplayYMeters,
     calculateDistances,
     validateInputs,
     computeRunMetersFromLanding,
