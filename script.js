@@ -372,14 +372,20 @@ function validateInputs(headSpeedRaw, smashFactorRaw, launchAngleRaw, spinRateRa
   return null;
 }
 
-function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters) {
+function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters, style = {}) {
   if (!ctx || !canvas || !result) return null;
+
+  const lineWidth = style.lineWidth ?? 3;
+  const runLineWidth = style.runLineWidth ?? 2;
+  const dash = style.dash ?? [];
+  const showPeakLabel = style.showPeakLabel ?? true;
 
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = lineWidth;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
+  ctx.setLineDash(dash);
   ctx.beginPath();
 
   let peakPoint = { x: plotLeft, y: plotBottom };
@@ -402,7 +408,7 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
 
   const runTrajectory = result.runTrajectory || [];
   if (runTrajectory.length > 1) {
-    ctx.lineWidth = 2;
+    ctx.lineWidth = runLineWidth;
     ctx.beginPath();
     let runStarted = false;
     for (const point of runTrajectory) {
@@ -436,9 +442,11 @@ function drawSingleTrajectory(result, color, scaleX, scaleY, plotLeft, plotBotto
   ctx.arc(totalX, plotBottom, 4.5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = markerColor;
-  ctx.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText("最大到達点", clamp(peakPoint.x - 28, plotLeft + 2, plotLeft + maxDisplayMeters * scaleX - 72), clamp(peakPoint.y - 10, 20, plotBottom - 20));
+  if (showPeakLabel) {
+    ctx.fillStyle = markerColor;
+    ctx.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText("最大到達点", clamp(peakPoint.x - 28, plotLeft + 2, plotLeft + maxDisplayMeters * scaleX - 72), clamp(peakPoint.y - 10, 20, plotBottom - 20));
+  }
 
   ctx.restore();
 }
@@ -538,18 +546,20 @@ function drawTrajectory(previous, current) {
   ctx.fillStyle = "#12161f";
   const legendY = plotTop + 18;
 
-  const drawLegend = (label, color, x) => {
+  const drawLegend = (label, color, x, dash = []) => {
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
+    ctx.setLineDash(dash);
     ctx.beginPath();
     ctx.moveTo(x, legendY - 4);
     ctx.lineTo(x + 24, legendY - 4);
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.fillText(label, x + 30, legendY);
   };
 
   const legendBaseX = plotRight - 180;
-  drawLegend("一つ前(ゴースト)", "rgba(20, 130, 245, 1)", legendBaseX);
+  drawLegend("前回ライン", "rgba(95, 147, 196, 0.45)", legendBaseX, [8, 6]);
   drawLegend("現在", "rgba(255, 118, 30, 1)", legendBaseX + 112);
   ctx.restore();
 
@@ -562,7 +572,7 @@ function drawTrajectory(previous, current) {
   ctx.stroke();
   ctx.restore();
 
-  drawSingleTrajectory(previous, "rgba(20, 130, 245, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
+  drawSingleTrajectory(previous, "rgba(95, 147, 196, 0.45)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters, { lineWidth: 2, runLineWidth: 1.5, dash: [8, 6], showPeakLabel: false });
   drawSingleTrajectory(current, "rgba(255, 118, 30, 1)", scaleX, scaleY, plotLeft, plotBottom, maxDisplayMeters);
 }
 
@@ -662,13 +672,13 @@ function createSingleForm() {
     refs.totalResultCurrent.textContent = `現在: ${(result.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
 
     if (previousResult) {
-      refs.maxHeightResultPrevious.textContent = `一つ前: ${previousResult.maxHeightMeters.toFixed(1)} m`;
-      refs.carryResultPrevious.textContent = `一つ前: ${(previousResult.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
-      refs.totalResultPrevious.textContent = `一つ前: ${(previousResult.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
+      refs.maxHeightResultPrevious.textContent = `前回: ${previousResult.maxHeightMeters.toFixed(1)} m`;
+      refs.carryResultPrevious.textContent = `前回: ${(previousResult.carryMeters / METERS_PER_YARD).toFixed(1)} yd`;
+      refs.totalResultPrevious.textContent = `前回: ${(previousResult.totalMeters / METERS_PER_YARD).toFixed(1)} yd`;
     } else {
-      refs.maxHeightResultPrevious.textContent = "一つ前: -";
-      refs.carryResultPrevious.textContent = "一つ前: -";
-      refs.totalResultPrevious.textContent = "一つ前: -";
+      refs.maxHeightResultPrevious.textContent = "前回: -";
+      refs.carryResultPrevious.textContent = "前回: -";
+      refs.totalResultPrevious.textContent = "前回: -";
     }
 
     drawTrajectory(previousResult, currentResult);
@@ -680,11 +690,11 @@ function createSingleForm() {
       previousResult = null;
       currentResult = null;
       clearError();
-      refs.maxHeightResultPrevious.textContent = "一つ前: -";
+      refs.maxHeightResultPrevious.textContent = "前回: -";
       refs.maxHeightResultCurrent.textContent = "現在: -";
-      refs.carryResultPrevious.textContent = "一つ前: -";
+      refs.carryResultPrevious.textContent = "前回: -";
       refs.carryResultCurrent.textContent = "現在: -";
-      refs.totalResultPrevious.textContent = "一つ前: -";
+      refs.totalResultPrevious.textContent = "前回: -";
       refs.totalResultCurrent.textContent = "現在: -";
       updateOutputs();
       drawTrajectory(previousResult, currentResult);
